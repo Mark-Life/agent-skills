@@ -1,0 +1,12 @@
+{
+  "name": "session-report",
+  "private": true,
+  "type": "module",
+  "bin": { "ccx-report": "./generate-report.ts" },
+  "scripts": {
+    "report": "bun run generate-report.ts"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.14"
+  }
+}

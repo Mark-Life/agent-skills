@@ -1,3 +1,6 @@
 .DS_Store
 node_modules/
 *.log
+# dev-only lockfile — bun-types is editor-only; scripts have no runtime deps
+bun.lock
+bun.lockb
