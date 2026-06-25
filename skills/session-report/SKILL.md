@@ -2,7 +2,7 @@
 name: session-report
 description: Generate a self-contained HTML report that debugs what is in a Claude Code or Codex session's context window and how every token is spent — context budget, the hidden cost of retained thinking, the dumb-zone cutoff, loaded CLAUDE.md/skills, and the full history.
 when_to_use: Run `/session-report <session-id>` to inspect or debug a session's context usage — e.g. "what's eating my context", "why did this session get dumb/degraded", "is my CLAUDE.md too big", "show the token budget / timeline / history for this session". Accepts a session id or a transcript path.
-argument-hint: [session-id]
+argument-hint: "[session-id]"
 arguments: session_id
 disable-model-invocation: true
 version: 1.0.0

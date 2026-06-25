@@ -101,7 +101,7 @@ export const renderTimeline = (a: AnalyzedSession): string => {
     [["unattributed", "#484f58"], ["system_tools", "#6e7681"]].map(([k, c]) =>
       `<pattern id="hatch-${k}" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">` +
       `<rect width="6" height="6" fill="${c}" fill-opacity="0.5"/>` +
-      `<line x1="0" y1="0" x2="0" y2="6" stroke="#0d0f12" stroke-opacity="0.4" stroke-width="2"/></pattern>`,
+      `<line x1="0" y1="0" x2="0" y2="6" stroke="rgba(0,0,0,0.45)" stroke-width="2"/></pattern>`,
     ).join("") +
     `</defs>`;
 

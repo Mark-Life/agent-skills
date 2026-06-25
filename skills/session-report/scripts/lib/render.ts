@@ -61,22 +61,24 @@ const renderHeader = (a: AnalyzedSession): string => {
   ].filter(Boolean).join("");
 
   return `<header class="sticky"><div class="hdr">
-    <div>
-      <div class="title">${esc(a.title || "Claude Code session")}</div>
-      <div class="sub"><span id="session-id" data-full="${esc(a.sessionId)}" title="click to copy">${esc(a.sessionId.slice(0, 8))}</span> · ${esc(a.models.join(", "))} · ${esc(a.cwd || "")}</div>
+    <div class="hdr-top">
+      <div class="hdr-id">
+        <div class="title">${esc(a.title || "Claude Code session")}</div>
+        <div class="sub"><span id="session-id" data-full="${esc(a.sessionId)}" title="click to copy">${esc(a.sessionId.slice(0, 8))}</span> · ${esc(a.models.join(", "))} · ${esc(a.cwd || "")}</div>
+      </div>
+      <div class="controls">
+        <select id="window-select" title="context window override">
+          <option value="${a.contextWindow}" selected>${fmtK(a.contextWindow)} window${a.contextWindowInferred ? " (inferred)" : ""}</option>
+          <option value="200000">200K</option><option value="1000000">1M</option><option value="custom">custom…</option>
+        </select>
+        <button id="theme-toggle">☀ light</button>
+      </div>
     </div>
     <div class="gauge">
       <div class="gauge-track"><div class="gauge-fill" id="gauge-fill" style="width:${Math.min(100, frac * 100).toFixed(1)}%;background:var(--${zoneColor(z)})"></div><div class="gauge-dz" id="gauge-dz" style="left:${(a.dumbZoneFraction * 100).toFixed(0)}%"></div></div>
       <div class="gauge-lab"><span>peak ${fmt(a.peakContextTokens)}</span><span id="gauge-pct">${fmtPct(frac)} of ${fmt(a.contextWindow)}</span></div>
     </div>
     <div class="chips">${chips}</div>
-    <div class="controls">
-      <select id="window-select" title="context window override">
-        <option value="${a.contextWindow}" selected>${fmtK(a.contextWindow)} window${a.contextWindowInferred ? " (inferred)" : ""}</option>
-        <option value="200000">200K</option><option value="1000000">1M</option><option value="custom">custom…</option>
-      </select>
-      <button id="theme-toggle">☀ light</button>
-    </div>
   </div></header>`;
 };
 
@@ -233,7 +235,7 @@ const renderHistory = (a: AnalyzedSession): string => {
         <option value="user-prompt">user</option><option value="assistant-text">assistant</option>
         <option value="tool-call">tool calls</option><option value="tool-result">tool results</option>
         <option value="assistant-thinking">thinking</option><option value="attachment">attachments</option></select>
-      <label class="muted">min tok <input type="number" id="hist-min" value="0" style="width:80px;background:var(--panel2);border:1px solid var(--line2);border-radius:6px;color:var(--tx);padding:4px"></label>
+      <label class="muted">min tok <input type="number" id="hist-min" value="0"></label>
       <button data-expand-all="#history" data-label="all" data-open="0">Expand all</button>
     </div>
     ${out}</section>`;
@@ -261,34 +263,19 @@ path: ${esc(s.path)}</pre></details>`;
     ${cards}</section>`;
 };
 
-/** Collapsible methodology footer explaining which numbers to trust. */
+/** Methodology section: prose explaining which numbers to trust. */
 const renderMethodology = (a: AnalyzedSession): string =>
   `<section id="methodology"><h2>Methodology</h2>
-    <details class="evt" open><summary><span class="turn">read</span><span class="evt-kind k-system">how these numbers are derived</span><span class="prev">trust the right numbers</span><span></span></summary>
-    <pre>HEADLINE TOTALS are ground truth from the API usage metadata in each assistant turn:
-  context size at a turn = usage.input_tokens + cache_read_input_tokens + cache_creation_input_tokens
-  peak context = max over turns (= ${fmt(a.peakContextTokens)})
-
-PER-ITEM SIZES (budget bands, loaded inventory, offenders) are chars/4 estimates.
-
-THINKING is the dominant hidden cost: thinking text is NOT stored in the transcript
-(only a signature). We recover it as: retained thinking = Σ output_tokens − Σ visible(text+tool_use).
-This is why the 'thinking' band is large yet accurate.
-
-SYSTEM+TOOLS RESIDUAL (${fmt(a.systemOverheadTokens)}) = first-turn real context − visible loads at turn 0.
-It is the fixed floor (system prompt + tool schemas + global CLAUDE.md). Not in the transcript;
-the instruction-files table attributes part of it from disk.
-
-UNATTRIBUTED = real peak − everything above. It is mostly tool-definition schemas that grow as
-tools are searched/loaded, per-turn reminders, and tokenizer/encoding overhead. A large value
-means tool bloat.
-
-CONTEXT WINDOW = ${fmt(a.contextWindow)}${a.contextWindowInferred ? " (inferred: peak>200K ⇒ 1M, else 200K — override with --window or the header select)" : " (explicit)"}.
-DUMB ZONE = ${Math.round(a.dumbZoneFraction * 100)}% of the window, a context-degradation heuristic.
-
-NOTE: the header window-override recomputes percentages and the gauge live; the timeline SVG is
-drawn for the generation-time window — regenerate with --window N for an authoritative redraw.
-Source: ${esc(a.path)}</pre></details></section>`;
+    <div class="lead">How these numbers are derived — and which ones to trust.</div>
+    <div class="prose">
+      <p><strong>Headline totals</strong> are ground truth from the API <code>usage</code> metadata in each assistant turn: context size at a turn = <code>input_tokens + cache_read_input_tokens + cache_creation_input_tokens</code>; peak context = max over turns (= ${fmt(a.peakContextTokens)}).</p>
+      <p><strong>Per-item sizes</strong> (budget bands, loaded inventory, offenders) are chars/4 estimates.</p>
+      <p><strong>Thinking</strong> is the dominant hidden cost: thinking text is <em>not</em> stored in the transcript (only a signature). We recover it as retained thinking = Σ&nbsp;output_tokens − Σ&nbsp;visible(text + tool_use). That is why the thinking band is large yet accurate.</p>
+      <p><strong>System + tools residual</strong> (${fmt(a.systemOverheadTokens)}) = first-turn real context − visible loads at turn 0. It is the fixed floor (system prompt + tool schemas + global CLAUDE.md), not in the transcript; the instruction-files table attributes part of it from disk.</p>
+      <p><strong>Unattributed</strong> = real peak − everything above. Mostly tool-definition schemas that grow as tools are searched/loaded, per-turn reminders, and tokenizer/encoding overhead. A large value means tool bloat.</p>
+      <p><strong>Context window</strong> = ${fmt(a.contextWindow)}${a.contextWindowInferred ? " (inferred: peak &gt; 200K ⇒ 1M, else 200K — override with --window or the header select)" : " (explicit)"}. <strong>Dumb zone</strong> = ${Math.round(a.dumbZoneFraction * 100)}% of the window, a context-degradation heuristic.</p>
+      <p class="muted">Note: the header window-override recomputes percentages and the gauge live; the timeline SVG is drawn for the generation-time window — regenerate with <code>--window N</code> for an authoritative redraw. Source: <code>${esc(a.path)}</code></p>
+    </div></section>`;
 
 /** Build the complete HTML document string. */
 export const renderReport = (a: AnalyzedSession): string => {
@@ -312,7 +299,7 @@ ${renderOffenders(a)}
 ${renderHistory(a)}
 ${renderSubagents(a)}
 ${renderMethodology(a)}
-<footer>Generated by session-report · ${esc(a.provider)} · ${esc(a.sessionId)}</footer>
+<footer>Generated by <a href="https://github.com/Mark-Life/agent-skills/tree/main/skills/session-report" target="_blank" rel="noopener">session-report</a> · ${esc(a.provider)} · ${esc(a.sessionId)} · created by <a href="https://andrey-markin.com" target="_blank" rel="noopener">andrey-markin.com</a></footer>
 </div>
 <script>window.__CTX__=${dataJson};</script>
 <script>${JS}</script>
