@@ -8,11 +8,11 @@ Personal collection of agent skills, installable via the [`skills` CLI](https://
 # List available skills
 npx skills add Mark-Life/agent-skills --list
 
-# Install all skills globally for Claude Code
-npx skills add Mark-Life/agent-skills -g -a claude-code
+# Install all skills for Claude Code
+npx skills add Mark-Life/agent-skills -a claude-code
 
 # Install a specific skill
-npx skills add Mark-Life/agent-skills --skill parallel-worktree-orchestrator
+npx skills add Mark-Life/agent-skills --skill session-report
 
 # Update later
 npx skills update
@@ -29,6 +29,7 @@ npx skills add https://github.com/Mark-Life/agent-skills/tree/v1.0.0
 | Skill | Description |
 | --- | --- |
 | [`parallel-worktree-orchestrator`](skills/parallel-worktree-orchestrator/SKILL.md) | Use the root conversation as an orchestrator that fans out independent workstreams to worktree-isolated subagents and reviews their output. |
+| [`session-report`](skills/session-report/SKILL.md) | `/session-report <id>` — generate a self-contained HTML report debugging a Claude Code (or Codex) session's context window: token budget, thinking cost, dumb-zone cutoff, full history. |
 
 ## Adding a new skill
 
