@@ -90,10 +90,16 @@ const attachmentTitle = (a: Record<string, unknown>): string => {
 /**
  * Parse a Claude Code transcript file into a ParsedSession.
  * Token usage is taken verbatim from assistant `usage`; body sizes are chars/4.
+ *
+ * @param opts.includeSidechainTurns - count `isSidechain` assistant turns toward
+ *   the turn/usage curve. Off by default (a main transcript must not absorb its
+ *   subagents' turns); on when parsing a subagent's *own* file, whose every line
+ *   is flagged `isSidechain`.
  */
 export const parseClaudeSession = (
   path: string,
   sessionId: string,
+  opts: { includeSidechainTurns?: boolean } = {},
 ): ParsedSession => {
   const lines = readJsonl(path);
   const events: TimelineEvent[] = [];
@@ -202,8 +208,9 @@ export const parseClaudeSession = (
       const cacheCreate = usage.cache_creation_input_tokens ?? 0;
       const contextTokens = inputTokens + cacheRead + cacheCreate;
       // Sidechain (subagent) turns run in their own window — never count them
-      // toward the main session's context curve.
-      if (!turnsById.has(requestId) && contextTokens > 0 && !isSidechain) {
+      // toward the main session's context curve, unless this file *is* the
+      // subagent's transcript (every line flagged isSidechain).
+      if (!turnsById.has(requestId) && contextTokens > 0 && (opts.includeSidechainTurns || !isSidechain)) {
         turnsById.set(requestId, {
           requestId,
           ts,

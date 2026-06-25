@@ -3,14 +3,18 @@ import type { AnalyzedSession, BudgetKey } from "./types.ts";
 import { CAT_META } from "./analyze.ts";
 import { esc, fmtK } from "./tokens.ts";
 
-const STACK_ORDER: BudgetKey[] = [
+/** Floor -> top stacking order; shared with the client-side timeline redraw. */
+export const STACK_ORDER: BudgetKey[] = [
   "system_tools", "listings", "memory", "files", "prompts",
   "tool_results", "assistant_text", "thinking", "other", "unattributed",
 ];
 
+/** Fixed plot geometry (viewBox + margins); shared with the client redraw. */
+export const TL_GEOM = { W: 1000, H: 440, L: 76, R: 18, T: 22, B: 46 } as const;
+
 /** Build the timeline SVG markup for an analyzed session. */
 export const renderTimeline = (a: AnalyzedSession): string => {
-  const W = 1000, H = 440, L = 76, R = 18, T = 22, B = 46;
+  const { W, H, L, R, T, B } = TL_GEOM;
   const plotW = W - L - R, plotH = H - T - B;
   const snaps = a.snapshots;
   const n = snaps.length;
@@ -106,7 +110,7 @@ export const renderTimeline = (a: AnalyzedSession): string => {
     `</defs>`;
 
   return (
-    `<svg viewBox="0 0 ${W} ${H}" class="timeline" role="img" aria-label="Context growth over turns" preserveAspectRatio="xMidYMid meet">` +
+    `<svg id="timeline-svg" viewBox="0 0 ${W} ${H}" class="timeline" role="img" aria-label="Context growth over turns" preserveAspectRatio="xMidYMid meet">` +
     defs + band + ghost + grid +
     areas.join("") +
     `<path d="${silhouette}" class="tl-silhouette"/>` +

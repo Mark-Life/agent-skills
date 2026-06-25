@@ -54,10 +54,11 @@ Print the output path to the user.
 Options:
 - `--out <file>` — output path (default `./ccx-<id>.html`).
 - `--window <tokens>` — context-window size. **Important:** the model id in the transcript does
-  not record whether the session ran the 200K or 1M window. The generator infers 1M only if peak
-  context already exceeded 200K. **If you know the session ran a 1M-context model (e.g. Opus 4.x
-  with the 1M beta) but peaked under 200K, pass `--window 1000000`** or the report will look
-  alarmingly full. The header has a live override too.
+  not record whether the session ran the 200K or 1M window, so Claude Code sessions **default to
+  1M** (its usual context). **If the session actually ran a 200K-context model, pass
+  `--window 200000`** (or pick 200K in the header selector) or the report will look misleadingly
+  empty. Codex records its window directly, so this is not needed there. The header has a live
+  override too.
 - `--dumb-zone <frac>` — degradation threshold as a fraction of the window (default `0.40`).
 - `--no-subagents` — skip parsing subagent transcripts.
 - `--codex` — force Codex-rollout parsing (auto-detected by default from the file/path).

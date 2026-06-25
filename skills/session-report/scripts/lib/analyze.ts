@@ -30,17 +30,17 @@ export interface AnalyzeOptions {
  * across budget bar, timeline, tables, legend), and whether the value is an
  * estimate vs ground truth. system_tools and unattributed render hatched.
  */
-const CAT_META: Record<BudgetKey, { label: string; color: string; estimated: boolean; note?: string }> = {
-  system_tools: { label: "System + tool definitions", color: "#6e7681", estimated: true, note: "inferred floor — not in transcript" },
-  listings: { label: "Skill / agent / tool listings", color: "#58a6ff", estimated: true },
-  memory: { label: "CLAUDE.md / AGENTS.md (in transcript)", color: "#bc8cff", estimated: true },
-  files: { label: "Opened files / plans", color: "#39c5cf", estimated: true },
-  prompts: { label: "User prompts", color: "#3fb950", estimated: true },
-  tool_results: { label: "Tool results", color: "#f0883e", estimated: true },
-  assistant_text: { label: "Assistant text + tool calls", color: "#d29922", estimated: true },
-  thinking: { label: "Assistant thinking (retained)", color: "#db61a2", estimated: true, note: "derived from output_tokens − visible text" },
-  other: { label: "Other injected (reminders, hooks)", color: "#8a929e", estimated: true },
-  unattributed: { label: "Tool schemas & overhead (not in transcript)", color: "#484f58", estimated: true, note: "real context − everything attributable above" },
+const CAT_META: Record<BudgetKey, { label: string; short: string; color: string; estimated: boolean; note?: string }> = {
+  system_tools: { label: "System + tool definitions", short: "System", color: "#6e7681", estimated: true, note: "inferred floor — not in transcript" },
+  listings: { label: "Skill / agent / tool listings", short: "Listings", color: "#58a6ff", estimated: true },
+  memory: { label: "CLAUDE.md / AGENTS.md (in transcript)", short: "Memory", color: "#bc8cff", estimated: true },
+  files: { label: "Opened files / plans", short: "Files", color: "#39c5cf", estimated: true },
+  prompts: { label: "User prompts", short: "Prompts", color: "#3fb950", estimated: true },
+  tool_results: { label: "Tool results", short: "Tool results", color: "#f0883e", estimated: true },
+  assistant_text: { label: "Assistant text + tool calls", short: "Assistant", color: "#d29922", estimated: true },
+  thinking: { label: "Assistant thinking (retained)", short: "Thinking", color: "#db61a2", estimated: true, note: "derived from output_tokens − visible text" },
+  other: { label: "Other injected (reminders, hooks)", short: "Other", color: "#8a929e", estimated: true },
+  unattributed: { label: "Tool schemas & overhead (not in transcript)", short: "Overhead", color: "#484f58", estimated: true, note: "real context − everything attributable above" },
 };
 
 const ZERO_SLICES = (): Record<BudgetKey, number> => ({
@@ -67,8 +67,10 @@ export const analyze = (p: ParsedSession, opts: AnalyzeOptions = {}): AnalyzedSe
   });
   const finalContextTokens = turns.at(-1)?.contextTokens ?? 0;
 
-  const contextWindow =
-    opts.window ?? p.declaredContextWindow ?? (peakContextTokens > 200_000 ? 1_000_000 : 200_000);
+  // Window precedence: explicit override > provider-declared (Codex) > default.
+  // Claude Code transcripts never record the window, so assume 1M (its usual
+  // default); switch to 200K via the header selector for a 200K-model session.
+  const contextWindow = opts.window ?? p.declaredContextWindow ?? 1_000_000;
   const contextWindowInferred = !opts.window && !p.declaredContextWindow;
 
   // Per-turn estimate of visible text + tool_use (model output we *can* see).

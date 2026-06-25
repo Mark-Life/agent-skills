@@ -1,7 +1,7 @@
 /** Assemble the self-contained HTML report from an AnalyzedSession. */
 import type { AnalyzedSession, BudgetKey, SubagentRef, TimelineEvent } from "./types.ts";
 import { CAT_META } from "./analyze.ts";
-import { renderTimeline } from "./svg.ts";
+import { renderTimeline, STACK_ORDER, TL_GEOM } from "./svg.ts";
 import { CSS, JS } from "./assets.ts";
 import { cap, esc, firstLine, fmt, fmtBytes, fmtDuration, fmtK, fmtPct } from "./tokens.ts";
 
@@ -43,21 +43,31 @@ const renderHeader = (a: AnalyzedSession): string => {
   const cacheFrac = a.peakContextTokens ? a.peakCacheReadTokens / a.peakContextTokens : 0;
   const memTok = a.onDiskContextFiles.reduce((s, f) => s + f.tokensEst, 0);
   const big = a.biggestItems[0];
+  const dzPct = Math.round(a.dumbZoneFraction * 100);
+  const dzTok = a.dumbZoneFraction * a.contextWindow;
 
-  const chip = (label: string, cls: string, jump?: string) =>
-    `<span class="chip ${cls}"${jump ? ` data-jump="${jump}"` : ""}>${esc(label)}</span>`;
+  const chip = (label: string, cls: string, jump?: string, tip?: string) =>
+    `<span class="chip ${cls}"${jump ? ` data-jump="${jump}"` : ""}${tip ? ` data-tip="${esc(tip)}"` : ""}>${esc(label)}</span>`;
 
   const chips = [
-    `<span class="chip ${z}" id="health-word">${health}</span>`,
-    chip(`system+tools ${fmtK(a.systemOverheadTokens)}`, a.systemOverheadTokens / a.contextWindow > 0.15 ? "warn" : "", "budget"),
-    memTok > 0 ? chip(`CLAUDE.md/mem ${fmtK(memTok)}`, memTok > 5000 ? "bad" : "", "loaded") : "",
+    `<span class="chip ${z}" id="health-word" data-tip="${esc(`Overall verdict from peak context vs window (${fmtPct(frac)} of ${fmt(a.contextWindow)}). Healthy below the dumb zone · Degrading as it nears ${dzPct}% · Rotting once above it.`)}">${health}</span>`,
+    chip(`system+tools ${fmtK(a.systemOverheadTokens)}`, a.systemOverheadTokens / a.contextWindow > 0.15 ? "warn" : "", "budget",
+      `Fixed per-turn overhead: system prompt + tool definitions (${fmt(a.systemOverheadTokens)} tok). Sent on every request, can't be reclaimed.`),
+    memTok > 0 ? chip(`CLAUDE.md/mem ${fmtK(memTok)}`, memTok > 5000 ? "bad" : "", "loaded",
+      `On-disk files auto-loaded into context each turn (CLAUDE.md, memory): ${fmt(memTok)} tok.`) : "",
     a.dumbZoneCrossTurn >= 0
-      ? chip(`dumb zone @ turn ${a.dumbZoneCrossTurn + 1}`, "bad", "timeline")
-      : chip("never crossed — healthy", "ok", "timeline"),
-    a.compactionTurns.length ? chip(`${a.compactionTurns.length} compaction(s)`, "warn", "timeline") : "",
-    big ? chip(`biggest: ${big.toolName ?? big.kind} ${fmtK(big.tokensEst)}`, "", "offenders") : "",
-    a.subagents.length ? chip(`${a.subagents.length} subagent(s)`, "", "subagents") : "",
-    chip(`cache ${fmtPct(cacheFrac)}`, "ok"),
+      ? chip("dumb zone", "bad", "timeline",
+        `Peak context crossed the dumb-zone line — ${dzPct}% of the window (${fmt(dzTok)} tok) — at turn ${a.dumbZoneCrossTurn + 1}; ran ${a.dumbZoneTurns}/${a.turnCount} turns above it, where attention/quality degrade.`)
+      : chip("smart zone", "ok", "timeline",
+        `Peak context stayed below the dumb-zone line — ${dzPct}% of the window (${fmt(dzTok)} tok). The model ran entirely in the quality zone.`),
+    a.compactionTurns.length ? chip(`${a.compactionTurns.length} compaction(s)`, "warn", "timeline",
+      `${a.compactionTurns.length} automatic compaction(s): older history was summarized to reclaim context space.`) : "",
+    big ? chip(`biggest: ${big.toolName ?? big.kind} ${fmtK(big.tokensEst)}`, "", "offenders",
+      `Largest single context item: ${big.toolName ?? big.kind} at ${fmt(big.tokensEst)} tok.`) : "",
+    a.subagents.length ? chip(`${a.subagents.length} subagent(s)`, "", "subagents",
+      `${a.subagents.length} subagent (Task) run(s). Each runs in its own separate context window, so its tokens don't count against this one.`) : "",
+    chip(`cache ${fmtPct(cacheFrac)}`, "ok", undefined,
+      `Share of the prompt served from the cache at the peak turn: cache_read ÷ (input + cache_read + cache_creation) = ${fmtPct(cacheFrac)}. Higher is cheaper and faster — cache reads cost ≈10% of fresh input tokens.`),
   ].filter(Boolean).join("");
 
   return `<header class="sticky"><div class="hdr">
@@ -68,7 +78,7 @@ const renderHeader = (a: AnalyzedSession): string => {
       </div>
       <div class="controls">
         <select id="window-select" title="context window override">
-          <option value="${a.contextWindow}" selected>${fmtK(a.contextWindow)} window${a.contextWindowInferred ? " (inferred)" : ""}</option>
+          <option value="${a.contextWindow}" selected>${fmtK(a.contextWindow)} window${a.contextWindowInferred ? " (assumed)" : ""}</option>
           <option value="200000">200K</option><option value="1000000">1M</option><option value="custom">custom…</option>
         </select>
         <button id="theme-toggle">☀ light</button>
@@ -86,7 +96,7 @@ const renderHeader = (a: AnalyzedSession): string => {
 const renderMeta = (a: AnalyzedSession): string => {
   const peakZone = zoneColor(zoneOf(a.peakContextTokens / a.contextWindow, a.dumbZoneFraction));
   const cells = [
-    metaCell("Model", `${esc(a.models[0] || "—")}<br><small>${fmtK(a.contextWindow)} window ${a.contextWindowInferred ? '<span class="dotted" title="model id does not flag 1M vs 200K; inferred from peak">inferred</span>' : ""}</small>`),
+    metaCell("Model", `${esc(a.models[0] || "—")}<br><small>${fmtK(a.contextWindow)} window ${a.contextWindowInferred ? '<span class="dotted" title="Claude Code transcripts do not record the window; assumed 1M default — switch to 200K via the header selector">assumed</span>' : ""}</small>`),
     metaCell("Peak context", `<span style="color:var(--${peakZone})">${fmt(a.peakContextTokens)}</span><br><small>${fmtPct(a.peakContextTokens / a.contextWindow)} of window</small>`),
     metaCell("Turns", `${a.turnCount}<br><small>${a.userMessageCount} user · ${a.toolCallCount} tool calls</small>`),
     metaCell("System+tools tax", `${fmt(a.systemOverheadTokens)}<br><small class="dotted" title="first-turn context minus visible loads; not in transcript">every-turn floor</small>`),
@@ -105,7 +115,7 @@ const renderBudget = (a: AnalyzedSession): string => {
   const win = a.contextWindow;
   const segs = a.budget.map((s) => {
     const pctUsed = a.peakContextTokens ? (100 * s.tokens) / a.peakContextTokens : 0;
-    const lab = pctUsed > 5 ? `${s.label.split(" ")[0]} ${pctUsed.toFixed(0)}%` : "";
+    const lab = pctUsed > 5 ? `${s.short} ${pctUsed.toFixed(0)}%` : "";
     const hatched = s.key === "unattributed" || s.key === "system_tools";
     const bg = hatched
       ? `repeating-linear-gradient(45deg,${s.color},${s.color} 5px,transparent 5px,transparent 8px),${s.color}`
@@ -273,8 +283,8 @@ const renderMethodology = (a: AnalyzedSession): string =>
       <p><strong>Thinking</strong> is the dominant hidden cost: thinking text is <em>not</em> stored in the transcript (only a signature). We recover it as retained thinking = Σ&nbsp;output_tokens − Σ&nbsp;visible(text + tool_use). That is why the thinking band is large yet accurate.</p>
       <p><strong>System + tools residual</strong> (${fmt(a.systemOverheadTokens)}) = first-turn real context − visible loads at turn 0. It is the fixed floor (system prompt + tool schemas + global CLAUDE.md), not in the transcript; the instruction-files table attributes part of it from disk.</p>
       <p><strong>Unattributed</strong> = real peak − everything above. Mostly tool-definition schemas that grow as tools are searched/loaded, per-turn reminders, and tokenizer/encoding overhead. A large value means tool bloat.</p>
-      <p><strong>Context window</strong> = ${fmt(a.contextWindow)}${a.contextWindowInferred ? " (inferred: peak &gt; 200K ⇒ 1M, else 200K — override with --window or the header select)" : " (explicit)"}. <strong>Dumb zone</strong> = ${Math.round(a.dumbZoneFraction * 100)}% of the window, a context-degradation heuristic.</p>
-      <p class="muted">Note: the header window-override recomputes percentages and the gauge live; the timeline SVG is drawn for the generation-time window — regenerate with <code>--window N</code> for an authoritative redraw. Source: <code>${esc(a.path)}</code></p>
+      <p><strong>Context window</strong> = ${fmt(a.contextWindow)}${a.contextWindowInferred ? " (assumed: Claude Code does not record its window, so we default to 1M — switch to 200K with the header select or --window for a 200K-model session)" : " (explicit / provider-declared)"}. <strong>Dumb zone</strong> = ${Math.round(a.dumbZoneFraction * 100)}% of the window, a context-degradation heuristic.</p>
+      <p class="muted">Note: the header window-override recomputes percentages, the gauge, and the timeline live. Source: <code>${esc(a.path)}</code></p>
     </div></section>`;
 
 /** Build the complete HTML document string. */
@@ -283,6 +293,23 @@ export const renderReport = (a: AnalyzedSession): string => {
     peak: a.peakContextTokens,
     window: a.contextWindow,
     dumbFraction: a.dumbZoneFraction,
+    // Per-turn geometry + data for the client-side timeline redraw on window change.
+    tl: {
+      ...TL_GEOM,
+      peak: a.peakContextTokens,
+      peakIdx: a.peakTurnIndex,
+      compactions: a.compactionTurns,
+      cats: STACK_ORDER.map((k) => ({
+        color: CAT_META[k].color,
+        label: CAT_META[k].label,
+        hatch: k === "unattributed" || k === "system_tools",
+      })),
+      snaps: a.snapshots.map((s) => ({
+        ctx: s.ctx,
+        out: s.outputTokens,
+        sl: STACK_ORDER.map((k) => Math.round(s.slices[k] ?? 0)),
+      })),
+    },
   };
   const dataJson = JSON.stringify(data).replace(/</g, "\\u003c");
   return `<!doctype html><html lang="en" data-theme="dark"><head>

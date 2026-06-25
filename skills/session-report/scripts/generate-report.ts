@@ -11,7 +11,7 @@
  *
  * Options:
  *   --out <file>        output HTML path (default: ./ccx-<id>.html)
- *   --window <tokens>   context window override (default: inferred 200K/1M)
+ *   --window <tokens>   context window override (default: Codex-declared, else 1M)
  *   --dumb-zone <frac>  degradation threshold as fraction of window (default 0.40)
  *   --no-subagents      skip parsing subagent transcripts
  *   --open              open the report in the default browser when done
@@ -54,7 +54,7 @@ const parseArgs = (argv: string[]): Args => {
 /** Parse a subagent transcript into a lightweight SubagentRef with metrics. */
 const analyzeSubagent = (ref: Omit<SubagentRef, "turns" | "peakContextTokens">): SubagentRef => {
   try {
-    const p = parseClaudeSession(ref.path, ref.id);
+    const p = parseClaudeSession(ref.path, ref.id, { includeSidechainTurns: true });
     const peak = p.turns.reduce((m, t) => Math.max(m, t.contextTokens), 0);
     return { ...ref, turns: p.turns.length, peakContextTokens: peak };
   } catch (err) {

@@ -133,6 +133,8 @@ export type BudgetKey =
 export interface BudgetSlice {
   key: BudgetKey;
   label: string;
+  /** Compact, collision-free label for the narrow stacked-bar segments. */
+  short: string;
   tokens: number;
   color: string;
   /** true when the value is a chars/4 estimate rather than ground-truth usage. */
