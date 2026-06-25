@@ -10,12 +10,9 @@ version: 1.0.0
 
 # Session Report
 
-Generates a single self-contained HTML file that reconstructs an agent session from its
-transcript and shows **what is in the model's context window and how every token is spent** —
-a forensic debugger for context bloat and the "dumb zone" (context-rot past ~40% of the window).
+Generates a single self-contained HTML file that reconstructs an agent session from its transcript and shows **what is in the model's context window and how every token is spent** — a forensic debugger for context bloat and the "dumb zone" (context-rot past ~40% of the window).
 
-This is a **user-invoked** command (`/session-report`); it is not auto-invoked by the model.
-The session id is passed as the `$session_id` argument.
+This is a **user-invoked** command (`/session-report`); it is not auto-invoked by the model. The session id is passed as the `$session_id` argument.
 
 ## What the report shows
 
@@ -28,8 +25,7 @@ The session id is passed as the `$session_id` argument.
 ## How to run
 
 The generator is a zero-dependency TypeScript script with **no build step**. Run it from the
-skill's `scripts/` dir with the requested session id (`$session_id`). Pick whichever runtime the
-user has — they need only one:
+skill's `scripts/` dir with the requested session id (`$session_id`). Pick whichever runtime the user has — they need only one:
 
 ```bash
 # Node >= 22.18 / >= 23.6 (native TS type-stripping; most Claude Code users have Node):
@@ -40,25 +36,15 @@ bun run generate-report.ts "$session_id" --open
 npx tsx generate-report.ts "$session_id" --open
 ```
 
-Detect what's available (e.g. `command -v node bun`) and use that. A direct transcript path and
-options also work, e.g. `node generate-report.ts /path/to/<id>.jsonl --out report.html --window 1000000`.
+Detect what's available (e.g. `command -v node bun`) and use that. A direct transcript path and options also work, e.g. `node generate-report.ts /path/to/<id>.jsonl --out report.html --window 1000000`.
 
-If `$session_id` is empty (the user ran `/session-report` with no argument), list recent
-Claude Code sessions and ask which one — e.g.
-`ls -t ~/.claude/projects/*/*.jsonl | head` — then re-run with the chosen id.
+If `$session_id` is empty (the user ran `/session-report` with no argument), list recent Claude Code sessions and ask which one — e.g. `ls -t ~/.claude/projects/*/*.jsonl | head` — then re-run with the chosen id.
 
-It finds the transcript by id under `~/.claude/projects/*/`, parses it, reads the relevant
-CLAUDE.md/AGENTS.md/memory files from disk, and writes the HTML (then `--open`s it if asked).
-Print the output path to the user.
+It finds the transcript by id under `~/.claude/projects/*/`, parses it, reads the relevant CLAUDE.md/AGENTS.md/memory files from disk, and writes the HTML (then `--open`s it if asked).Print the output path to the user.
 
 Options:
 - `--out <file>` — output path (default `./ccx-<id>.html`).
-- `--window <tokens>` — context-window size. **Important:** the model id in the transcript does
-  not record whether the session ran the 200K or 1M window, so Claude Code sessions **default to
-  1M** (its usual context). **If the session actually ran a 200K-context model, pass
-  `--window 200000`** (or pick 200K in the header selector) or the report will look misleadingly
-  empty. Codex records its window directly, so this is not needed there. The header has a live
-  override too.
+- `--window <tokens>` — context-window size. **Leave the default. Claude Code always runs the 1M window, so keep 1M and do NOT pass `--window 200000` unless the user explicitly asks for a 200K view.** A peak near 200K is normal 1M usage (~20% full), not evidence of a 200K cap — never infer the window from the peak or from a healthy-looking gauge, and never regenerate to "double-check." If the user does want to compare, the report header has a live in-browser window override, so there's no need to regenerate at all. (Codex records its real window directly, so this flag is irrelevant there.)
 - `--dumb-zone <frac>` — degradation threshold as a fraction of the window (default `0.40`).
 - `--no-subagents` — skip parsing subagent transcripts.
 - `--codex` — force Codex-rollout parsing (auto-detected by default from the file/path).
@@ -68,8 +54,7 @@ Options:
 - **Ground truth vs estimate**: per-turn context size is exact from `usage` metadata(`input + cache_read + cache_creation`); per-item sizes are chars/4 estimates.
 - **Thinking is the usual hidden giant**: thinking text is *not* stored in the transcript, but it is retained in context. The report recovers it from real `output_tokens` minus visible text/tool_use — so a huge "thinking" band is accurate, not a guess.
 - **System+tools residual**: first-turn context minus visible loads = the fixed floor (system prompt + tool schemas + global CLAUDE.md). Not in the transcript; partly attributed from disk.
-- **Unattributed** = real peak minus everything attributable ≈ growing tool-definition schemas
-  (from tool search / many MCP servers), per-turn reminders, and encoding overhead. Large value ⇒ tool bloat.
+- **Unattributed** = real peak minus everything attributable ≈ growing tool-definition schemas (from tool search / many MCP servers), per-turn reminders, and encoding overhead. Large value ⇒ tool bloat.
 
 ## Codex sessions
 
