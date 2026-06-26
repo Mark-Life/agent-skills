@@ -14,6 +14,7 @@
  *   --window <tokens>   context window override (default: Codex-declared, else 1M)
  *   --dumb-zone <frac>  degradation threshold as fraction of window (default 0.40)
  *   --no-subagents      skip parsing subagent transcripts
+ *   --no-redact         disable best-effort secret redaction (ON by default)
  *   --open              open the report in the default browser when done
  */
 import { writeFileSync } from "node:fs";
@@ -24,6 +25,7 @@ import { parseClaudeSession } from "./lib/parse.ts";
 import { resolveCodexSession, parseCodexSession, isCodexFile } from "./lib/codex.ts";
 import { analyze } from "./lib/analyze.ts";
 import { renderReport } from "./lib/render.ts";
+import { redactSession } from "./lib/redact.ts";
 import type { ParsedSession, SubagentRef } from "./lib/types.ts";
 
 interface Args {
@@ -34,16 +36,18 @@ interface Args {
   noSubagents: boolean;
   open: boolean;
   codex: boolean;
+  redact: boolean;
 }
 
 const parseArgs = (argv: string[]): Args => {
-  const a: Args = { noSubagents: false, open: false, codex: false };
+  const a: Args = { noSubagents: false, open: false, codex: false, redact: true };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === "--out") a.out = argv[++i];
     else if (arg === "--window") a.window = Number(argv[++i]);
     else if (arg === "--dumb-zone") a.dumbZone = Number(argv[++i]);
     else if (arg === "--no-subagents") a.noSubagents = true;
+    else if (arg === "--no-redact") a.redact = false;
     else if (arg === "--open") a.open = true;
     else if (arg === "--codex") a.codex = true;
     else if (!arg.startsWith("--") && !a.target) a.target = arg;
@@ -66,7 +70,7 @@ const analyzeSubagent = (ref: Omit<SubagentRef, "turns" | "peakContextTokens">):
 const main = () => {
   const args = parseArgs(process.argv.slice(2));
   if (!args.target) {
-    console.error("Usage: bun run generate-report.ts <session-id | path.jsonl> [--out f] [--window n] [--dumb-zone f] [--no-subagents] [--codex] [--open]");
+    console.error("Usage: bun run generate-report.ts <session-id | path.jsonl> [--out f] [--window n] [--dumb-zone f] [--no-subagents] [--no-redact] [--codex] [--open]");
     process.exit(1);
   }
 
@@ -105,7 +109,8 @@ const main = () => {
     onDiskContextFiles,
   });
 
-  const html = renderReport(analyzed);
+  const finalSession = args.redact ? redactSession(analyzed) : analyzed;
+  const html = renderReport(finalSession);
   const out = args.out ?? join(process.cwd(), `ccx-${parsed.sessionId.slice(0, 8)}.html`);
   writeFileSync(out, html, "utf8");
 
@@ -115,6 +120,11 @@ const main = () => {
       `(${(100 * analyzed.peakContextTokens / analyzed.contextWindow).toFixed(0)}% of ${analyzed.contextWindow.toLocaleString()})  ` +
       `dumb-zone@turn=${analyzed.dumbZoneCrossTurn >= 0 ? analyzed.dumbZoneCrossTurn + 1 : "never"}  ` +
       `subagents=${analyzed.subagents.length}`,
+  );
+  console.error(
+    args.redact
+      ? "  WARNING: embeds the raw transcript and may contain secrets even after best-effort redaction — review before sharing."
+      : "  WARNING: redaction DISABLED (--no-redact) — this file embeds the raw transcript verbatim and likely contains secrets. Do NOT share without reviewing.",
   );
   console.log(out);
 

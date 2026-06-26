@@ -1,5 +1,5 @@
 /** Assemble the self-contained HTML report from an AnalyzedSession. */
-import type { AnalyzedSession, BudgetKey, SubagentRef, TimelineEvent } from "./types.ts";
+import type { AnalyzedSession, BudgetKey, SubagentRef } from "./types.ts";
 import { CAT_META } from "./analyze.ts";
 import { renderTimeline, STACK_ORDER, TL_GEOM } from "./svg.ts";
 import { CSS, JS } from "./assets.ts";
@@ -316,6 +316,7 @@ export const renderReport = (a: AnalyzedSession): string => {
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(a.title || a.sessionId)} · context report</title>
 <style>${CSS}</style></head><body>
+<div id="secrets-warn" style="background:#7a2;color:#fff;padding:8px 14px;font-size:13px;display:flex;gap:10px;align-items:center;justify-content:space-between"><span>⚠ This report embeds the raw session transcript and may contain secrets (tokens, keys, file contents). Best-effort redaction runs by default but is not guaranteed — review before sharing.</span><button onclick="this.parentNode.remove()" style="background:rgba(0,0,0,.25);color:#fff;border:0;border-radius:4px;padding:3px 9px;cursor:pointer">Dismiss</button></div>
 ${renderHeader(a)}
 <div class="wrap">
 ${renderMeta(a)}
