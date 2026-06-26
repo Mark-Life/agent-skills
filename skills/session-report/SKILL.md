@@ -5,7 +5,7 @@ when_to_use: Run `/session-report <session-id>` to inspect or debug a session's 
 argument-hint: "[session-id]"
 arguments: session_id
 disable-model-invocation: true
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Session Report
