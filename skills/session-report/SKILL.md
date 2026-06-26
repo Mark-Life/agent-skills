@@ -47,6 +47,7 @@ Options:
 - `--window <tokens>` — context-window size. **Leave the default. Claude Code always runs the 1M window, so keep 1M and do NOT pass `--window 200000` unless the user explicitly asks for a 200K view.** A peak near 200K is normal 1M usage (~20% full), not evidence of a 200K cap — never infer the window from the peak or from a healthy-looking gauge, and never regenerate to "double-check." If the user does want to compare, the report header has a live in-browser window override, so there's no need to regenerate at all. (Codex records its real window directly, so this flag is irrelevant there.)
 - `--dumb-zone <frac>` — degradation threshold as a fraction of the window (default `0.40`).
 - `--no-subagents` — skip parsing subagent transcripts.
+- `--no-redact` — disable secret redaction. Best-effort secret redaction (API keys, tokens, private keys, credential assignments) is **ON by default**; this flag turns it off and embeds the transcript verbatim.
 - `--codex` — force Codex-rollout parsing (auto-detected by default from the file/path).
 
 ## Key concepts (so you can interpret the report for the user)
@@ -63,5 +64,6 @@ Codex rollouts (`~/.codex/sessions/YYYY/MM/DD/rollout-*.jsonl`) are also support
 ## Notes
 
 - Output is a single HTML file — no server, no network, no external libraries. Open in any browser.
-- All transcript content is HTML-escaped; the report is safe to open even with untrusted content.
+- A deterministic script reads the transcript and writes the HTML; the model never reads or echoes session content. CLAUDE.md/AGENTS.md/memory files are read for **size only** and are **not** embedded. The report is a **local, private, human-facing artifact** — it is not meant to be fed back into an LLM as context.
+- Transcript content is HTML-escaped (safe to **open** in a browser — no XSS), and best-effort secret redaction runs by default, but the file may still contain sensitive data from your session — **review before sharing**. The report opens with a dismissible banner reminding you of this; use `--no-redact` to embed the raw transcript verbatim.
 - Large sessions produce multi-MB files (everything is inlined and collapsed by default).
