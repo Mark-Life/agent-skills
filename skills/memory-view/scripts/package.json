@@ -1,0 +1,12 @@
+{
+  "name": "memory-view",
+  "private": true,
+  "type": "module",
+  "bin": { "memory-view": "./scan-memory.ts" },
+  "scripts": {
+    "curate": "bun run scan-memory.ts"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.14"
+  }
+}
