@@ -1,0 +1,2 @@
+- [Present topic](present-topic.md) — a real note that resolves cleanly
+- [Ghost topic](ghost-file.md) — points at a file that was deleted/renamed and no longer exists on disk (dangling index entry)

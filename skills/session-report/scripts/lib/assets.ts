@@ -85,8 +85,8 @@ header.sticky{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(
 .chip.bad{border-color:oklch(from var(--red) l c h / 0.5);color:var(--red);background:oklch(from var(--red) l c h / 0.1)}
 .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .controls select,.controls button{background:var(--panel);color:var(--tx);border:1px solid var(--line2);
-  border-radius:var(--r-sm);padding:5px 10px;font-size:12px;font-family:var(--sans);cursor:pointer;
-  transition:border-color .15s,background .15s}
+  border-radius:999px;padding:5px 12px;font-size:12px;line-height:1.2;font-family:var(--sans);cursor:pointer;
+  vertical-align:middle;transition:border-color .15s,background .15s}
 .controls select:hover,.controls button:hover{border-color:var(--primary)}
 
 /* sections */
@@ -171,13 +171,13 @@ details.evt pre{margin:0;padding:14px;background:var(--bg);border-top:1px solid 
 .k-compaction,.k-summary,.k-system{background:var(--panel);color:var(--mut)}
 .dzrule{display:flex;align-items:center;gap:10px;margin:16px 0;color:var(--red);font-size:12.5px;font-family:var(--mono)}
 .dzrule::before,.dzrule::after{content:"";flex:1;height:1px;background:var(--red);opacity:.5}
-.copybtn{font-size:11px;padding:3px 10px;border:1px solid var(--line2);border-radius:var(--r-xs);background:var(--panel);
+.copybtn{font-size:11px;padding:3px 11px;border:1px solid var(--line2);border-radius:999px;background:var(--panel);
   color:var(--mut);cursor:pointer;float:right;margin:9px;transition:border-color .15s,color .15s}
 .copybtn:hover{border-color:var(--primary);color:var(--tx)}
 .filterbar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
 .filterbar input[type=search],.filterbar select,.filterbar button,.filterbar input[type=number]{
-  background:var(--panel);color:var(--tx);border:1px solid var(--line2);border-radius:var(--r-sm);
-  padding:7px 12px;font-size:13px;font-family:var(--sans);line-height:1.2;transition:border-color .15s,background .15s}
+  background:var(--panel);color:var(--tx);border:1px solid var(--line2);border-radius:999px;
+  padding:7px 14px;font-size:13px;font-family:var(--sans);line-height:1.2;transition:border-color .15s,background .15s}
 .filterbar input[type=search]{flex:1;min-width:180px;background:var(--panel2)}
 .filterbar input[type=number]{width:88px}
 .filterbar select,.filterbar button{cursor:pointer}

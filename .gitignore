@@ -1,6 +1,13 @@
 .DS_Store
 node_modules/
 *.log
+# generated skill output artifacts (session-report / memory-view)
+ccx-*.html
+mem-*.html
+mem-*.findings.json
+# test/coverage output
+coverage/
+*.tsbuildinfo
 # dev-only lockfile — bun-types is editor-only; scripts have no runtime deps
 bun.lock
 bun.lockb

@@ -1,0 +1,2 @@
+- [Default branch is main](default-branch-main.md) — states the repo's default branch is `main`
+- [Default branch is master](default-branch-master.md) — states the repo's default branch is `master` (contradicts the other note)

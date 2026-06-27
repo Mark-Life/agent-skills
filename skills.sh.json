@@ -1,0 +1,15 @@
+{
+  "groups": [
+    {
+      "title": "Inspect & Debug",
+      "description": "See what Claude Code is doing: session context-window reports and memory.",
+      "skills": ["session-report", "memory-view"]
+    },
+    {
+      "title": "Coding Workflows",
+      "description": "Orchestrate parallel coding work across worktree-isolated subagents.",
+      "skills": ["parallel-worktree-orchestrator"]
+    }
+  ],
+  "notGrouped": "bottom"
+}
