@@ -1,0 +1,2 @@
+- [Silent empty list — uuid strictness](silent-empty-list-uuid.md) — derived UUID schema rejects Postgres ids → empty list at HTTP 200
+- [Silent empty list — decode failure](silent-empty-list-decode.md) — strict UUID decode throws → UI shows nothing, network returns 200 OK

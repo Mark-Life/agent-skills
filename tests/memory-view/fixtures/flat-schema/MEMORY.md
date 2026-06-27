@@ -1,0 +1,1 @@
+- [Agent Workflow Notes](project_agent_workflow.md) — legacy flat-frontmatter note whose `name` does not match its filename stem

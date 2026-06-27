@@ -1,0 +1,2 @@
+- [Broken link examples](broken-link-examples.md) — demonstrates a dangling wikilink, a dangling markdown link, and a typo'd link with a unique near-match
+- [Near match target](near-match.md) — the unique tier-A repair target for the typo'd `[[near-mtch]]` reference

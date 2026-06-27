@@ -1,0 +1,1 @@
+- [Indexed topic](indexed-topic.md) — the one note the index actually lists; it body-links the orphan but the index does not

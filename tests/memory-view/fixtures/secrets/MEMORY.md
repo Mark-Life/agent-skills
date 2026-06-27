@@ -1,0 +1,1 @@
+- [Leaked credentials example](leaked-credentials.md) — note containing fake-but-pattern-matching secrets and a local absolute path (SEC01/SEC03)
