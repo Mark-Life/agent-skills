@@ -3,7 +3,7 @@
     {
       "title": "Inspect & Debug",
       "description": "See what Claude Code is doing: session context-window reports and memory.",
-      "skills": ["session-report", "memory-view"]
+      "skills": ["session-report", "memory-view", "context-doctor"]
     },
     {
       "title": "Coding Workflows",
