@@ -31,6 +31,7 @@ npx skills add https://github.com/Mark-Life/agent-skills/tree/v1.0.0
 | [`parallel-worktree-orchestrator`](skills/parallel-worktree-orchestrator/SKILL.md) | Use the root conversation as an orchestrator that fans out independent workstreams to worktree-isolated subagents and reviews their output. |
 | [`session-report`](skills/session-report/SKILL.md) | `/session-report <id>` — generate a self-contained HTML report debugging a Claude Code (or Codex) session's context window: token budget, thinking cost, dumb-zone cutoff, full history. |
 | [`memory-view`](skills/memory-view/SKILL.md) | `/memory-view [project]` — open a self-contained, secret-redacted HTML explorer of Claude Code's per-project auto-memory. View, search, and browse only — no edits, no curation. |
+| [`context-doctor`](skills/context-doctor/SKILL.md) | `/context-doctor` — audit and shrink the fixed context loaded every session (tool/MCP definitions, plugins, skills, subagents, memory/rules) by pruning, gating, or routing what's loaded but unused. |
 
 ## Repository layout
 
