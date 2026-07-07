@@ -40,14 +40,32 @@ describe("skills/ ships only runtime artifacts", () => {
     expect(offenders).toEqual([]);
   });
 
-  test("every skill directory has a SKILL.md", () => {
+  test("every skill directory has a SKILL.md (flat or catalog layout)", () => {
     const skillsDir = join(REPO_ROOT, "skills");
-    const dirs = readdirSync(skillsDir, { withFileTypes: true })
-      .filter((e) => e.isDirectory())
-      .map((e) => e.name);
-    expect(dirs.length).toBeGreaterThan(0);
-    for (const d of dirs) {
-      expect(existsSync(join(skillsDir, d, "SKILL.md"))).toBe(true);
+    const subdirs = (dir: string) =>
+      readdirSync(dir, { withFileTypes: true })
+        .filter((e) => e.isDirectory())
+        .map((e) => e.name);
+
+    const top = subdirs(skillsDir);
+    expect(top.length).toBeGreaterThan(0);
+
+    let skillCount = 0;
+    for (const d of top) {
+      const path = join(skillsDir, d);
+      if (existsSync(join(path, "SKILL.md"))) {
+        // flat layout: skills/<name>/SKILL.md
+        skillCount++;
+        continue;
+      }
+      // catalog layout: skills/<category>/<name>/SKILL.md
+      const nested = subdirs(path);
+      expect(nested.length).toBeGreaterThan(0);
+      for (const n of nested) {
+        expect(existsSync(join(path, n, "SKILL.md"))).toBe(true);
+        skillCount++;
+      }
     }
+    expect(skillCount).toBeGreaterThan(0);
   });
 });

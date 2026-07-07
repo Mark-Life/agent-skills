@@ -13,7 +13,7 @@ runs the detectors against them (`bun test`). To eyeball one by hand, point the
 scanner at it from the repo root:
 
 ```bash
-node skills/memory-view/scripts/scan-memory.ts tests/memory-view/fixtures/<case> --audit
+node skills/inspect-and-debug/memory-view/scripts/scan-memory.ts tests/memory-view/fixtures/<case> --audit
 ```
 
 All embedded "secrets" are deliberately fake, well-known example values.
