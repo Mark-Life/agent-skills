@@ -2,7 +2,7 @@
 name: context-doctor
 description: "Audit and shrink the fixed context a coding agent auto-loads every session — tool/MCP definitions, plugins, skills, subagents, memory/rules files, built-in tools & feature subsystems — by pruning, gating, denying, or routing what's loaded but unused. User-invoked: type it when the context feels bloated."
 disable-model-invocation: true
-version: 1.1.0
+version: 1.2.0
 ---
 
 # Context Doctor
@@ -41,6 +41,13 @@ Read the harness's own breakdown first if it has one — the Anthropic harness's
 
 **2. Correlate.** Bloat is *loaded but unused*. Look past this session:
 - Scan past transcripts for the project (Claude Code: `~/.claude/projects/**/<uuid>.jsonl`; other agents store theirs elsewhere). What was ever actually invoked? Loaded in 100 sessions, called in zero is the cleanest cut.
+- **A tool doesn't only leave its trace in transcripts — check for artifacts it persists on disk.** Some subsystems write durable run files that survive even when a transcript is summarized, truncated, or gone. The clearest example: the **workflow engine writes `wf_*.json` run files and a `scripts/` dir** under `~/.claude/projects/**/<uuid>/workflows/` every time it runs. Their presence is proof the user runs workflows — stronger than any transcript grep. Before proposing to disable *any* surface, look for its on-disk footprint too, not just message history:
+  ```bash
+  # Workflow usage — across ALL projects, not just this repo (a global flag reaches every project)
+  find ~/.claude/projects -type d -name workflows 2>/dev/null | head
+  find ~/.claude/projects -path '*/workflows/wf_*.json' 2>/dev/null | head
+  ```
+- **Absence of evidence is not evidence of absence — and it is never grounds for a confident "you don't use this."** You searched one machine's local history; the user may run the feature in projects you didn't scan, in sessions already pruned, or on another machine. When you find no usage, say exactly that — *"I found no trace of X in your local transcripts or run files"* — and let the user confirm before cutting. Reserve "you don't use it" for surfaces with a positive dead signal (e.g. a connector for a service with zero footprint in the repo). Never turn silence into an assertion.
 - Cross-check the repo: a Supabase/Vercel/Notion connector in a repo with no trace of that service is dead weight.
 - Note heavy skills or servers riding along in sessions whose task never touches them.
 
@@ -137,7 +144,7 @@ Fixes A–F trim what *you* added. But a large, ignorable chunk is first-party �
 
 | Flag | Drops | What the user gives up |
 |---|---|---|
-| `disableWorkflows` | the `Workflow` multi-agent tool — often the single largest tool definition in the payload | multi-agent orchestration / "ultracode" runs |
+| `disableWorkflows` | the `Workflow` multi-agent tool — often the single largest tool definition in the payload | multi-agent orchestration / "ultracode" runs. **Before proposing this, check the on-disk footprint (Method step 2): `find ~/.claude/projects -type d -name workflows`. If `wf_*.json` run files exist, the user runs workflows — do not recommend disabling it.** |
 | `disableBundledSkills` | Anthropic's bundled skill catalogue (`dataviz`, `review`, `init`, …) from the model's payload | the model auto-loading them — but their **slash commands stay typable**, so `/init` etc. still work by hand |
 | `disableArtifact` | the `Artifact` tool | publishing HTML/Markdown artifact pages |
 | `disableRemoteControl` | remote-control / push tooling | driving the session remotely |
