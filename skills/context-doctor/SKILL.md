@@ -1,8 +1,8 @@
 ---
 name: context-doctor
-description: "Audit and shrink the fixed context a coding agent auto-loads every session — tool/MCP definitions, plugins, skills, subagents, memory/rules files — by pruning, gating, or routing what's loaded but unused. User-invoked: type it when the context feels bloated."
+description: "Audit and shrink the fixed context a coding agent auto-loads every session — tool/MCP definitions, plugins, skills, subagents, memory/rules files, built-in tools & feature subsystems — by pruning, gating, denying, or routing what's loaded but unused. User-invoked: type it when the context feels bloated."
 disable-model-invocation: true
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Context Doctor
@@ -17,9 +17,10 @@ Every session opens with a fixed tax paid before the user speaks: system prompt,
 
 Split by who controls it:
 
-- **Harness-injected** — system prompt, base tools, provider attachments. Unchangeable; just account for it.
+- **Harness-injected** — system prompt, the core-loop scaffolding, provider attachments. Mostly unchangeable; account for it. But *less is truly fixed than it looks*: on the Anthropic harness many **built-in** tools and whole feature subsystems are now switch-off-able — see Fix G.
 - **User-controlled** (your target):
-  - **Tool definitions** — built-ins plus every MCP/connector tool. Usually the largest, most ignorable chunk.
+  - **Tool definitions** — built-ins plus every MCP/connector tool. Usually the largest, most ignorable chunk. Built-in tools you never use in this repo (plan mode, notebooks, artifacts, cron, the ask-question UI…) can be denied by name.
+  - **Feature subsystems** — bundled-skill catalogues, the multi-agent workflow engine, remote control, connectors. Each ships its own tool defs; many drop with a single flag.
   - **MCP servers** — project, user-level, and provider-synced "connectors" (enabled on a vendor site, synced down).
   - **Plugins** — bundle their own tools/skills/MCP.
   - **Skills** — each auto-loadable one spends its `name` + `description` every turn just to stay discoverable.
@@ -36,7 +37,7 @@ Split by who controls it:
 - MCP servers and where each is configured.
 - subagents and memory/rules in effect.
 
-Rank by per-section token count if the harness exposes it, else by definition count — a server with 40 tool defs is a fat target.
+Read the harness's own breakdown first if it has one — the Anthropic harness's `/context` command reports tokens by category (system prompt, system tools, MCP tools, memory files, messages); for individual tool sizes a logging proxy that intercepts the API request and ranks each tool def is the deepest view. Rank by per-section token count when exposed, else by definition count — a server with 40 tool defs is a fat target.
 
 **2. Correlate.** Bloat is *loaded but unused*. Look past this session:
 - Scan past transcripts for the project (Claude Code: `~/.claude/projects/**/<uuid>.jsonl`; other agents store theirs elsewhere). What was ever actually invoked? Loaded in 100 sessions, called in zero is the cleanest cut.
@@ -126,6 +127,54 @@ CLAUDE.md  (always loaded)       CLAUDE.md            ← cross-cutting rules on
 
 Content survives and arrives exactly when relevant; unrelated turns stop paying. Confirm the trigger and file name per agent.
 
+### G. Disable built-in tools & feature subsystems you don't use
+
+Fixes A–F trim what *you* added. But a large, ignorable chunk is first-party — built-in tools and whole subsystems shipped every turn whether this repo needs them or not. On the **Anthropic harness** two `settings.json` mechanisms (global `~/.claude/`, project `.claude/`) turn them off.
+
+> **Harness-specific — this is the Anthropic Claude Code shape only.** The keys below don't exist on Codex, OpenCode, Pi, or others. Treat them as a worked example of the *idea* — "find the config that drops unused built-in tooling" — and, for any other agent, research that agent's own docs for its equivalent before recommending anything. (Codex, for instance, configures tools differently and has no `permissions.deny`/`disable*` flags.)
+
+**G1 — Feature flags: one key drops a whole subsystem.**
+
+| Flag | Drops | What the user gives up |
+|---|---|---|
+| `disableWorkflows` | the `Workflow` multi-agent tool — often the single largest tool definition in the payload | multi-agent orchestration / "ultracode" runs |
+| `disableBundledSkills` | Anthropic's bundled skill catalogue (`dataviz`, `review`, `init`, …) from the model's payload | the model auto-loading them — but their **slash commands stay typable**, so `/init` etc. still work by hand |
+| `disableArtifact` | the `Artifact` tool | publishing HTML/Markdown artifact pages |
+| `disableRemoteControl` | remote-control / push tooling | driving the session remotely |
+| `disableClaudeAiConnectors` | *all* provider-synced connectors at once | every connector — same kill switch as Fix A; **list them before flipping it** |
+
+**G2 — Deny built-in tools by name.** `permissions.deny: ["EnterPlanMode", "AskUserQuestion", …]` strips each named tool's definition from every turn. Name the high-consequence ones out loud so the user decides with eyes open — several change the *UI*, not just the token count:
+
+- `EnterPlanMode` + `ExitPlanMode` → **removes plan mode entirely.** Shift-Tab plan mode stops working. Keep both if the user ever plans before editing.
+- `AskUserQuestion` → **removes the multiple-choice question UI.** The model can no longer pop option chips to disambiguate; it falls back to asking in plain prose — or to guessing instead of asking. Real UX loss, not free.
+- `NotebookEdit` → no Jupyter `.ipynb` editing. Safe to drop in a repo with no notebooks.
+- `CronCreate` / `CronDelete` / `CronList`, `ScheduleWakeup` → no scheduled or self-paced recurring agents (`/schedule`, `/loop`).
+- `SendMessage`, `PushNotification`, `RemoteTrigger`, `DesignSync`, `ReportFindings` → inter-agent messaging, notifications, and review plumbing — deny whatever this workflow never triggers.
+
+**G3 — `skillOverrides`: gate a skill from settings, not frontmatter.** `skillOverrides: { "some-skill": "off" }` removes a skill from the payload entirely; `"user-invocable-only"` keeps its slash command typable but hides it from the model. This is the Fix-B gate applied from *settings* — so it works on bundled and plugin skills whose frontmatter you don't own.
+
+**Don't strip the machinery your own workflow rides on.** Background jobs and multi-agent runs depend on the Task tools, `Workflow`, and the worktree tools; scheduled/recurring agents depend on the cron tools. If the user runs `/loop`, scheduled agents, or workflows, *keep* those — the definition cost buys a feature they actually use. Some of what looks like bloat is load-bearing machinery.
+
+Illustrative combined cut (confirm each key still exists, and that the user uses none of what it removes):
+
+```json
+{
+  "permissions": {
+    "deny": ["EnterPlanMode", "ExitPlanMode", "NotebookEdit",
+             "AskUserQuestion", "CronCreate", "CronDelete", "CronList",
+             "ScheduleWakeup", "SendMessage", "PushNotification",
+             "RemoteTrigger", "DesignSync", "ReportFindings"]
+  },
+  "disableBundledSkills": true,
+  "disableWorkflows": true,
+  "disableRemoteControl": true,
+  "disableClaudeAiConnectors": true,
+  "disableArtifact": true
+}
+```
+
+Re-measure with `/context` afterward — a full strip like this recovers tens of thousands of tokens per turn. But **every line above is a behavior change, not just a smaller number**: present each with its consequence and let the user opt in *per item*. Many will knowingly keep plan mode, the question UI, artifacts, or workflows — that's the informed decision, not a failure to cut.
+
 ---
 
 ## Guardrails
@@ -139,4 +188,4 @@ Content survives and arrives exactly when relevant; unrelated turns stop paying.
 
 ---
 
-Now run the analysis on this session and present the ranked cuts to the user.
+Now run the analysis on this session. Produce a **comprehensive, ranked menu** of ways to prune the context — across MCP/connectors (A), skills (B, C), dead weight (D), memory/rules (E, F), and built-in tools & feature subsystems (G) — each row stating its estimated per-turn saving, its exact mechanism at a stated scope, and *plainly what the user gives up*. Cover the built-in-tool and feature-flag cuts explicitly; they are usually the largest untapped win and the most ignored. Then let the user decide per item — the goal is a leaner, more focused agent the user chose, not the smallest possible number.
