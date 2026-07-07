@@ -9,13 +9,13 @@
 import { test, expect, describe } from "bun:test";
 import { join } from "node:path";
 
-import { resolveTarget } from "../../skills/memory-view/scripts/lib/resolve.ts";
-import { parseVault } from "../../skills/memory-view/scripts/lib/parse.ts";
-import { buildGraph } from "../../skills/memory-view/scripts/lib/graph.ts";
-import { runAudit } from "../../skills/memory-view/scripts/lib/audit.ts";
-import { buildCandidates } from "../../skills/memory-view/scripts/lib/candidates.ts";
-import { assembleVault } from "../../skills/memory-view/scripts/lib/findings.ts";
-import { redactVault, redactText } from "../../skills/memory-view/scripts/lib/redact.ts";
+import { resolveTarget } from "../../skills/inspect-and-debug/memory-view/scripts/lib/resolve.ts";
+import { parseVault } from "../../skills/inspect-and-debug/memory-view/scripts/lib/parse.ts";
+import { buildGraph } from "../../skills/inspect-and-debug/memory-view/scripts/lib/graph.ts";
+import { runAudit } from "../../skills/inspect-and-debug/memory-view/scripts/lib/audit.ts";
+import { buildCandidates } from "../../skills/inspect-and-debug/memory-view/scripts/lib/candidates.ts";
+import { assembleVault } from "../../skills/inspect-and-debug/memory-view/scripts/lib/findings.ts";
+import { redactVault, redactText } from "../../skills/inspect-and-debug/memory-view/scripts/lib/redact.ts";
 
 const FIXTURES = join(import.meta.dir, "fixtures");
 

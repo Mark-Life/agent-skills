@@ -13,7 +13,7 @@ import {
   fmtBytes,
   fmtPct,
   fmtDuration,
-} from "../../skills/session-report/scripts/lib/tokens.ts";
+} from "../../skills/inspect-and-debug/session-report/scripts/lib/tokens.ts";
 
 describe("estTokens (~len/4)", () => {
   test("empty → 0", () => expect(estTokens("")).toBe(0));

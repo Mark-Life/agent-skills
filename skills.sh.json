@@ -7,8 +7,8 @@
     },
     {
       "title": "Coding Workflows",
-      "description": "Orchestrate parallel coding work across worktree-isolated subagents.",
-      "skills": ["parallel-worktree-orchestrator"]
+      "description": "Coding workflow patterns: scaffolding new projects, orchestrating parallel work across worktree-isolated subagents.",
+      "skills": ["new-project", "parallel-worktree-orchestrator"]
     }
   ],
   "notGrouped": "bottom"
