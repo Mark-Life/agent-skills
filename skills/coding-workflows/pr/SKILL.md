@@ -1,6 +1,6 @@
 ---
 name: pr
-description: Use when writing a pull request title, body, or description, or when about to run `gh pr create`. Produces a Vim-style `area: summary` title with a Problem/Solution body, extended with Security Impact and Testing.
+description: "Use when writing a pull request title, body, or description, or when about to run `gh pr create`. Produces a Vim-style `area: summary` title with a Problem/Solution body, extended with Security Impact and Testing."
 version: 1.0.0
 ---
 
