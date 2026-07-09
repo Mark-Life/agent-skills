@@ -1,7 +1,7 @@
 ---
 name: pr
-description: "Use when writing a pull request title, body, or description, or when about to run `gh pr create`. Produces a Vim-style `area: summary` title with a Problem/Solution body, extended with Security Impact and Testing."
-version: 1.0.0
+description: "Use when writing a pull request title or body, or before running `gh pr create`."
+version: 1.0.1
 ---
 
 # PR
@@ -9,20 +9,27 @@ version: 1.0.0
 Write the title and body **Vim-style** — `area: summary`, then `Problem:` /
 `Solution:` — extended with `Security Impact:` and `Testing:`.
 
-Two words carry this skill. **Mechanism**: the Problem section names the exact
-thing that misbehaves, not the symptom. **Receipts**: the Testing section pastes
-output that was really produced, never output that would plausibly have been
-produced.
+Three words carry this skill. **Symptom**: every section opens with the thing a
+human noticed. **Mechanism**: the Problem section then names the exact code that
+misbehaves. **Receipts**: the Testing section pastes output that was really
+produced, never output that would plausibly have been produced.
+
+A PR body is read once, in a hurry, by someone deciding whether to approve. Every
+sentence earns its place by moving that decision along.
 
 ## Steps
 
-1. Read the diff (`git diff <base>...HEAD`) in full. The body describes the
+1. Read the diff (`git diff <base>...HEAD`) in full — done when every changed
+   file is accounted for, not when the shape is clear. The body describes the
    change that exists, not the change that was planned.
 2. If the diff spans unrelated areas, split the PR. Two problems means two PRs.
 3. Draft the title from the area of the largest coherent change.
 4. Write `Problem` from the failure, `Solution` from the idea.
 5. Run every command you are about to cite in `Testing`. Copy its real output.
-6. Open the PR with a heredoc, so the markdown survives the shell:
+   Done when no fenced line in `Testing` is unsourced.
+6. Cut every clause that would not change what a reviewer does. Done when the
+   body is under 400 words.
+7. Open the PR with a heredoc, so the markdown survives the shell:
 
    ```bash
    gh pr create --title "statusline: show commit SHA on detached HEAD" --body "$(cat <<'EOF'
@@ -32,10 +39,13 @@ produced.
    )"
    ```
 
-Done when all four hold:
+Done when all five hold:
 
-- The title is `area: imperative summary`, lowercase after the colon, no period.
+- The title is `area: imperative summary`, lowercase after the colon, no period,
+  under 72 characters.
 - The body has the four sections, in template order, and nothing else.
+- The body is under 400 words, and `Problem` and `Solution` are each at most two
+  paragraphs. Going over needs a reason a reviewer would agree with.
 - Every command in `Testing` was executed this session, and its pasted output was
   copied from a real result.
 - `Security Impact` says `None` only after auth, input parsing, secrets,
@@ -71,7 +81,7 @@ Done when all four hold:
 <before/after sentence>
 ````
 
-The template is exhaustive: four sections, two rules, that emphasis. A PR body
+The template is exhaustive: four sections, that emphasis. A PR body
 carries no `Changes`, no `Checklist`, no `Related issues`, no emoji, and no
 `Generated with` footer beyond what the harness requires.
 
@@ -94,17 +104,26 @@ Compare the same PRs titled badly: `Fix statusline bug` names the symptom,
 
 ### Problem
 
-The mechanism. Name the command, flag, function, or expression that misbehaves,
-and say what it does instead of what it should do. A reader who has never opened
-the code should understand the failure without opening the diff.
+Symptom first, mechanism second. The opening sentence says what a user or
+operator sees; only then does the paragraph descend into the code. Name the
+command, flag, function, or expression that misbehaves, and say what it does
+instead of what it should do. A reader who has never opened the code should
+understand the failure without opening the diff.
 
-> In a detached HEAD state, `git branch --show-current` prints nothing and exits 0.
-> The `|| echo "detached"` fallback only runs on a non-zero exit, so it never fires:
-> `$branch` stays empty and the status line renders a blank name after the `|`
-> separator.
+> The status line shows a blank name whenever the repo is on a detached HEAD.
+> `git branch --show-current` prints nothing and exits 0 in that state, so the
+> `|| echo "detached"` fallback — which only runs on a non-zero exit — never
+> fires and `$branch` stays empty.
 
-For a feature, the mechanism is the gap the feature closes — still concrete,
-still about the current state of the world.
+A reader who stops after that first sentence still learned the bug. Opening
+instead at `git branch --show-current` makes them assemble the consequence
+themselves.
+
+For a feature, the symptom is what a user cannot do today, and the mechanism is
+the gap the feature closes.
+
+When a change fixes a main defect and two incidental ones, the main defect owns
+the first paragraph and the incidental ones share the second.
 
 ### Solution
 
@@ -116,6 +135,21 @@ what happens when the new path fails.
 > from `git rev-parse --short HEAD`. If that also fails (a repo with no commits),
 > fall back to `detached`.
 
+State the decision, not the argument for it. *What* the code does and *what it
+guards against* belong here; *why the alternative was rejected* belongs in a code
+comment, a commit message, or a design doc. A clause beginning "because" that
+explains the type system, the storage format, or the author's reasoning is
+almost always such an argument.
+
+> Bad: Because `arrangedBy` is derived rather than independent data,
+> `deliveryMethodOf` treats the model as authoritative on read and falls back to
+> the persisted value only when the model is unavailable — `delivery_method` is
+> `jsonb`, so its TypeScript type is an assertion rather than a proof, and this
+> keeps a row written by an older deploy from rendering a wrong actor.
+>
+> Good: On read the model wins over the persisted value, so rows written by an
+> older deploy still name the right party.
+
 ### Security Impact
 
 A real assessment, not a ritual. When the change crosses a trust boundary, state
@@ -124,8 +158,11 @@ is correct, and is the right answer for most PRs.
 
 ### Testing
 
-Receipts. What was run, the output it really printed, and one closing sentence
-contrasting before with after and confirming the unaffected path is unchanged.
+Receipts. The output block comes first, after at most a one-line lead-in naming
+what was run — it is the section's evidence, and a reviewer scanning for green
+should not have to read past a paragraph to find it. Then what the new tests
+cover, then one closing sentence contrasting before with after and confirming the
+unaffected path is unchanged. Suite totals suffice; never paste a full test log.
 
 > Ran the script against a throwaway repo in detached HEAD (`git checkout HEAD~1`):
 >
@@ -147,7 +184,26 @@ and of what was done instead.
 
 ## Style
 
-Prose inside every section, two to five sentences. A section that wants a bullet
-list is a PR that wants splitting. Inline-code every identifier, command, path,
-flag, and literal value. Write in present tense about the change itself, so the
-sentences describe behaviour rather than authorship.
+**Omit needless words.** Everything below is that rule, made mechanical.
+
+**One sentence, one idea.** A sentence carrying three clauses joined by
+semicolons and em-dashes is three sentences wearing a trenchcoat. Split it. If a
+sentence runs past about thirty words, it has more than one idea in it.
+
+**Backtick what a reviewer would grep for.** Identifiers, commands, paths, flags,
+literal values — but only on the mention that matters, not on every recurrence,
+and never so densely that the prose becomes a symbol table. Three backticked
+identifiers before the first verb means the sentence started in the wrong place.
+
+**Prose, with bullets earned.** Prose is the default and carries any argument.
+Bullets are permitted for three or more genuinely parallel items, one line each —
+a list of removed call sites, say. A bulleted list that is really a changelog of
+the diff is a PR that wants splitting; a bulleted list that is really a paragraph
+with dashes in front of it is a paragraph.
+
+**Present tense, about the change.** The sentences describe behaviour, not
+authorship.
+
+**Name a thing once.** Having written `DeliveryTbd{arrangedBy:'partner'}`, write
+"the partner case" thereafter. Full ceremonial restatement of a symbol on each
+mention is how a body doubles in length while saying nothing new.
