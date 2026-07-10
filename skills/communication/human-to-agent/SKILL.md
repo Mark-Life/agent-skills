@@ -1,6 +1,6 @@
 ---
 name: human-to-agent
-description: "Use when writing or editing instructions an agent will later execute — a skill (SKILL.md), an agent rule file (CLAUDE.md / AGENTS.md), a system prompt, or a saved prompt. Triggers on 'edit this skill', 'update CLAUDE.md', 'write agent rules', 'improve this prompt'. Phrase for predictable behaviour: prompt the positive, leading words, cut no-ops."
+description: "Use when writing or editing instructions a model will later execute — anything future context windows load as guidance. Triggers on 'edit this skill', 'update CLAUDE.md / AGENTS.md', 'write agent rules', 'improve this prompt'."
 version: 1.0.0
 ---
 
@@ -62,15 +62,3 @@ layers pile up (**sediment**) and the whole thing is too long to follow
 (**sprawl**). Prune on a schedule: drop no-ops, collapse duplication, and push
 rarely-needed detail into a linked doc so the instruction that is always needed
 stays legible.
-
-## Scope
-
-This covers how to _phrase_ instructions — for a prompt, a skill body, or a rule
-file alike. The mechanics of packaging a skill (frontmatter, model- vs
-user-invocation, file layout, progressive disclosure) are a separate topic; see
-Matt Pocock's [`writing-great-skills`](https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-great-skills),
-from which this skill's vocabulary — leading word, no-op, sediment, sprawl,
-single source of truth, completion criterion — is drawn.
-
-Its mirror image, how the agent should write output a human will read, is the
-`agent-to-human` skill.

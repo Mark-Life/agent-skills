@@ -1,6 +1,6 @@
 ---
 name: agent-to-human
-description: "Use when producing anything a person will read — a chat reply, summary, status update, handoff, or a PR, issue, or commit message. Governs the final human-facing output, not the reasoning behind it. Triggers on wrapping up a task, reporting results, or writing a message to the user."
+description: "Use when producing the final output a person will read — a chat reply, summary, status update, handoff, or a PR, issue, or commit message — not your private reasoning. Triggers on wrapping up a task or reporting back to the user."
 version: 1.0.0
 ---
 
@@ -71,18 +71,5 @@ saying nothing new.
 **Present tense, about the thing** — the behaviour or the finding, not a
 narration of your process ("I then opened…").
 
-**No throat-clearing.** Skip the flattery, the preamble, the "Here's what I
-found" — a human reads straight past it to the first real word.
-
-## Done when
-
-- The first sentence is the answer.
-- Halving the length would lose something the reader needs.
-- Every command shown was run this session; every output block was copied from a
-  real result.
-
----
-
-This skill is the source of truth for human-facing output style. The `pr-issue`
-skill is this applied to pull requests and issues; its mirror image, how a human
-should write instructions the agent will execute, is the `human-to-agent` skill.
+**Open on the first real word.** The finding, not the flattery or the "Here's
+what I found" preamble — a human reads straight past those anyway.
