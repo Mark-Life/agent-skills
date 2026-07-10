@@ -7,8 +7,8 @@
     },
     {
       "title": "Coding Workflows",
-      "description": "Coding workflow patterns: scaffolding new projects, orchestrating parallel work across worktree-isolated subagents, writing pull requests.",
-      "skills": ["new-project", "parallel-worktree-orchestrator", "pr"]
+      "description": "Coding workflow patterns: scaffolding new projects, orchestrating parallel work across worktree-isolated subagents, writing pull requests and issues.",
+      "skills": ["new-project", "parallel-worktree-orchestrator", "pr-issue"]
     }
   ],
   "notGrouped": "bottom"

@@ -34,7 +34,7 @@ Skills are grouped into catalog folders under `skills/<group>/`.
 | --- | --- |
 | [`new-project`](skills/coding-workflows/new-project/SKILL.md) | Scaffold a brand-new project from the personal Next.js monorepo template (`Mark-Life/netxjs-monorepo`) and run the standard bootstrap. |
 | [`parallel-worktree-orchestrator`](skills/coding-workflows/parallel-worktree-orchestrator/SKILL.md) | Use the root conversation as an orchestrator that fans out independent workstreams to worktree-isolated subagents and reviews their output. |
-| [`pr`](skills/coding-workflows/pr/SKILL.md) | Write PR titles and bodies in Vim's `area: summary` + `Problem:`/`Solution:` style, extended with `Security Impact:` and `Testing:` sections. |
+| [`pr-issue`](skills/coding-workflows/pr-issue/SKILL.md) | Write PR, issue, and ticket titles and bodies in Vim's `area: summary` style — `Problem:`/`Solution:`/`Security Impact:`/`Testing:` for PRs, `Problem:`/`Reproduction:`/`Expected vs actual:`/`Proposed solution:` for issues. |
 
 ### Inspect & Debug
 
