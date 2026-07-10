@@ -1,7 +1,7 @@
 ---
 name: pr-issue
 description: "Use when writing a pull request, issue, or ticket — title or body — or before running `gh pr create` or `gh issue create`."
-version: 2.0.0
+version: 2.1.0
 ---
 
 # PR & Issue
@@ -132,6 +132,10 @@ Each reference says how far its `Problem` runs past this shape: a PR's is short
 and cedes detail to the diff, an issue's carries the code excerpts.
 
 ## Style
+
+These rules are this skill applied to PRs and issues; the general form is the
+`agent-to-human` skill, which is their source of truth. This section stands on its
+own, so `pr-issue` works whether or not that skill is installed.
 
 **Omit needless words.** Everything below is that rule, made mechanical.
 

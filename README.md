@@ -36,6 +36,13 @@ Skills are grouped into catalog folders under `skills/<group>/`.
 | [`parallel-worktree-orchestrator`](skills/coding-workflows/parallel-worktree-orchestrator/SKILL.md) | Use the root conversation as an orchestrator that fans out independent workstreams to worktree-isolated subagents and reviews their output. |
 | [`pr-issue`](skills/coding-workflows/pr-issue/SKILL.md) | Write PR, issue, and ticket titles and bodies in Vim's `area: summary` style — `Problem:`/`Solution:`/`Security Impact:`/`Testing:` for PRs, `Problem:`/`Reproduction:`/`Expected vs actual:`/`Proposed solution:` for issues. |
 
+### Communication
+
+| Skill | Description |
+| --- | --- |
+| [`agent-to-human`](skills/communication/agent-to-human/SKILL.md) | Write the final human-facing output — chat reply, summary, status update, PR/issue/commit message — to respect the reader's attention: answer first, cut to the decision, receipts only. Source of truth for output style. |
+| [`human-to-agent`](skills/communication/human-to-agent/SKILL.md) | Write instructions an agent will execute — prompts, skills, `CLAUDE.md`/`AGENTS.md` rules, tickets — for predictable behaviour: prompt the positive, leading words, cut no-ops, checkable completion criteria. |
+
 ### Inspect & Debug
 
 | Skill | Description |
