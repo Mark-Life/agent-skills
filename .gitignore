@@ -1,6 +1,8 @@
 .DS_Store
 node_modules/
 *.log
+# user-provided files (screenshots, references) — never ship
+user-sent-files/
 # generated skill output artifacts (session-report / memory-view)
 ccx-*.html
 mem-*.html
