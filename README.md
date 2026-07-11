@@ -95,6 +95,18 @@ bun test        # run unit + guard tests
 4. Add a row to the table above (under the matching group) and list it in `skills.sh.json`.
 5. Commit and push.
 
+## Credits
+
+- [`pr-issue`](skills/coding-workflows/pr-issue/SKILL.md) — the Vim-style
+  `area: summary` commit/PR format (`Problem` / `Solution` / `Security Impact` /
+  `Testing`) comes from **[Fatih Arslan](https://arslan.io)**
+  ([@fatih](https://github.com/fatih)), shared on X.
+- [`human-to-agent`](skills/communication/human-to-agent/SKILL.md) — its
+  principles and vocabulary (leading words, no-ops, single source of truth,
+  sediment, sprawl) draw from **[Matt Pocock](https://github.com/mattpocock)**'s
+  [`writing-great-skills`](https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-great-skills)
+  skill.
+
 ## License
 
 MIT
