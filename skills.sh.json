@@ -9,6 +9,11 @@
       "title": "Coding Workflows",
       "description": "Coding workflow patterns: scaffolding new projects, orchestrating parallel work across worktree-isolated subagents, writing pull requests and issues.",
       "skills": ["new-project", "parallel-worktree-orchestrator", "pr-issue"]
+    },
+    {
+      "title": "Communication",
+      "description": "Communication style in both directions: how the agent writes output a human will read, and how a human writes instructions the agent will execute.",
+      "skills": ["agent-to-human", "human-to-agent"]
     }
   ],
   "notGrouped": "bottom"

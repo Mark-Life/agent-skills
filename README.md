@@ -36,6 +36,13 @@ Skills are grouped into catalog folders under `skills/<group>/`.
 | [`parallel-worktree-orchestrator`](skills/coding-workflows/parallel-worktree-orchestrator/SKILL.md) | Use the root conversation as an orchestrator that fans out independent workstreams to worktree-isolated subagents and reviews their output. |
 | [`pr-issue`](skills/coding-workflows/pr-issue/SKILL.md) | Write PR, issue, and ticket titles and bodies in Vim's `area: summary` style — `Problem:`/`Solution:`/`Security Impact:`/`Testing:` for PRs, `Problem:`/`Reproduction:`/`Expected vs actual:`/`Proposed solution:` for issues. |
 
+### Communication
+
+| Skill | Description |
+| --- | --- |
+| [`agent-to-human`](skills/communication/agent-to-human/SKILL.md) | Write the final human-facing output — chat reply, summary, status update, PR/issue/commit message — to respect the reader's attention: answer first, cut to the decision, receipts only. Source of truth for output style. |
+| [`human-to-agent`](skills/communication/human-to-agent/SKILL.md) | Write instructions an agent will execute — prompts, skills, `CLAUDE.md`/`AGENTS.md` rules, tickets — for predictable behaviour: prompt the positive, leading words, cut no-ops, checkable completion criteria. |
+
 ### Inspect & Debug
 
 | Skill | Description |
@@ -87,6 +94,18 @@ bun test        # run unit + guard tests
    `tests/<name>/`, not in the skill folder.
 4. Add a row to the table above (under the matching group) and list it in `skills.sh.json`.
 5. Commit and push.
+
+## Credits
+
+- [`pr-issue`](skills/coding-workflows/pr-issue/SKILL.md) — the Vim-style
+  `area: summary` commit/PR format (`Problem` / `Solution` / `Security Impact` /
+  `Testing`) comes from **[Fatih Arslan](https://arslan.io)**
+  ([@fatih](https://github.com/fatih)), shared on X.
+- [`human-to-agent`](skills/communication/human-to-agent/SKILL.md) — its
+  principles and vocabulary (leading words, no-ops, single source of truth,
+  sediment, sprawl) draw from **[Matt Pocock](https://github.com/mattpocock)**'s
+  [`writing-great-skills`](https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-great-skills)
+  skill.
 
 ## License
 
