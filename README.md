@@ -32,6 +32,7 @@ Skills are grouped into catalog folders under `skills/<group>/`.
 
 | Skill | Description |
 | --- | --- |
+| [`product`](skills/coding-workflows/product/SKILL.md) | Product taste for shaping what to build, grown one principle at a time. Currently: *boil the ocean* (scope the ambition to what agents made possible), *the primitive is the product* (name the capability others compose on; schema, errors and guarantees are the surface), *the work announces itself* (start from a signal, not a prompt; reversibility draws the autonomy boundary), and *grow a second nervous system* (declare capabilities for machines, discover them lazily, and expose a core beneath the experience — agents are how humans find you). |
 | [`new-project`](skills/coding-workflows/new-project/SKILL.md) | Scaffold a brand-new project from the personal Next.js monorepo template (`Mark-Life/netxjs-monorepo`) and run the standard bootstrap. |
 | [`parallel-worktree-orchestrator`](skills/coding-workflows/parallel-worktree-orchestrator/SKILL.md) | Use the root conversation as an orchestrator that fans out independent workstreams to worktree-isolated subagents and reviews their output. |
 | [`pr-issue`](skills/coding-workflows/pr-issue/SKILL.md) | Write PR, issue, and ticket titles and bodies in Vim's `area: summary` style — `Problem:`/`Solution:`/`Security Impact:`/`Testing:` for PRs, `Problem:`/`Reproduction:`/`Expected vs actual:`/`Proposed solution:` for issues. |
@@ -97,6 +98,9 @@ bun test        # run unit + guard tests
 
 ## Credits
 
+- [`product`](skills/coding-workflows/product/SKILL.md) — most of its principles
+  are distilled from other people's writing; each sourced one is credited in
+  [`skills/coding-workflows/product/README.md`](skills/coding-workflows/product/README.md).
 - [`pr-issue`](skills/coding-workflows/pr-issue/SKILL.md) — the Vim-style
   `area: summary` commit/PR format (`Problem` / `Solution` / `Security Impact` /
   `Testing`) comes from **[Fatih Arslan](https://arslan.io)**

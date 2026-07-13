@@ -1,14 +1,14 @@
 {
   "groups": [
     {
-      "title": "Inspect & Debug",
+      "title": "Inspect & Debug Agents",
       "description": "See what Claude Code is doing: session context-window reports and memory.",
       "skills": ["session-report", "memory-view", "context-doctor"]
     },
     {
       "title": "Coding Workflows",
-      "description": "Coding workflow patterns: scaffolding new projects, orchestrating parallel work across worktree-isolated subagents, writing pull requests and issues.",
-      "skills": ["new-project", "parallel-worktree-orchestrator", "pr-issue"]
+      "description": "Coding workflow patterns: product taste for what to build, scaffolding new projects, orchestrating parallel work across worktree-isolated subagents, writing pull requests and issues.",
+      "skills": ["product", "new-project", "parallel-worktree-orchestrator", "pr-issue"]
     },
     {
       "title": "Communication",
