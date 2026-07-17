@@ -72,6 +72,8 @@ them anyway.
 >
 > Line numbers are against `738628132`.
 
+When the defect is visual, paste a screenshot of it alongside the code excerpt.
+
 ## Reproduction
 
 Numbered steps someone else can follow on a machine you do not control. Lead in

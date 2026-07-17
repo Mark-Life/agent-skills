@@ -51,6 +51,9 @@ the section names the failure and cedes the lines to the reviewer.
 When a change fixes a main defect and two incidental ones, the main defect owns
 the first paragraph and the incidental ones share the second.
 
+When the change is visual, paste a screenshot of the UI as it looks before the
+fix — the "before" half of a before/after pair.
+
 ## Solution
 
 The idea, at the level of the idea. The diff shows the lines; this section shows
@@ -75,6 +78,9 @@ almost always such an argument.
 >
 > Good: On read the model wins over the persisted value, so rows written by an
 > older deploy still name the right party.
+
+When the change is visual, paste a screenshot of the UI after the fix — the
+"after" that pairs with the `Problem` screenshot.
 
 ## Security Impact
 
