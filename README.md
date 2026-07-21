@@ -34,6 +34,7 @@ Skills are grouped into catalog folders under `skills/<group>/`.
 | --- | --- |
 | [`product`](skills/coding-workflows/product/SKILL.md) | Product taste for shaping what to build, grown one principle at a time. Currently: *boil the ocean* (scope the ambition to what agents made possible), *the primitive is the product* (name the capability others compose on; schema, errors and guarantees are the surface), *the work announces itself* (start from a signal, not a prompt; reversibility draws the autonomy boundary), and *grow a second nervous system* (declare capabilities for machines, discover them lazily, and expose a core beneath the experience — agents are how humans find you). |
 | [`new-project`](skills/coding-workflows/new-project/SKILL.md) | Scaffold a brand-new project from the personal Next.js monorepo template (`Mark-Life/netxjs-monorepo`) and run the standard bootstrap. |
+| [`observability`](skills/coding-workflows/observability/SKILL.md) | Instrument a TypeScript service so production is answerable: one wide event per request, job or run, high-cardinality fields, closed outcome unions, two-tier span names, bounded metric tags, config-gated OTel export, and tail sampling. Owns logging, tracing and metrics decisions. |
 | [`pr-issue`](skills/coding-workflows/pr-issue/SKILL.md) | Write PR, issue, and ticket titles and bodies in Vim's `area: summary` style — `Problem:`/`Solution:`/`Security Impact:`/`Testing:` for PRs, `Problem:`/`Reproduction:`/`Expected vs actual:`/`Proposed solution:` for issues. |
 
 ### Communication
