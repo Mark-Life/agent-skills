@@ -41,7 +41,7 @@ Skills are grouped into catalog folders under `skills/<group>/`.
 
 | Skill | Description |
 | --- | --- |
-| [`agent-to-human`](skills/communication/agent-to-human/SKILL.md) | Write the final human-facing output — chat reply, summary, status update, PR/issue/commit message — to respect the reader's attention: answer first, cut to the decision, receipts only. Source of truth for output style. |
+| [`agent-to-human`](skills/communication/agent-to-human/SKILL.md) | Write the final human-facing output — chat reply, summary, status update, PR/issue/commit message — to respect the reader's attention: answer first, cut to the decision, receipts only, plain words. Source of truth for output style. |
 | [`human-to-agent`](skills/communication/human-to-agent/SKILL.md) | Write instructions an agent will execute — prompts, skills, `CLAUDE.md`/`AGENTS.md` rules, tickets — for predictable behaviour: prompt the positive, leading words, cut no-ops, checkable completion criteria. |
 
 ### Inspect & Debug
