@@ -12,8 +12,8 @@
     },
     {
       "title": "Communication",
-      "description": "Communication style in both directions: how the agent writes output a human will read, and how a human writes instructions the agent will execute.",
-      "skills": ["agent-to-human", "human-to-agent"]
+      "description": "Writing style for every audience: output a human will read, instructions the agent will execute, and published prose written for readers.",
+      "skills": ["agent-to-human", "human-to-agent", "writing-for-readers"]
     }
   ],
   "notGrouped": "bottom"
