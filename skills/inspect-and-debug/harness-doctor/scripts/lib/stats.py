@@ -59,9 +59,17 @@ def median(values):
     return (ordered[mid - 1] + ordered[mid]) / 2
 
 
-def total(items, f):
-    """Sum a numeric field over items. 0 for an empty list."""
-    return sum(num(f(x)) for x in items)
+def total(items, f=None):
+    """Sum a numeric field over items, left to right. 0 for an empty list.
+
+    Deliberately not the built-in `sum`: since 3.12 that compensates float error,
+    which makes a total differ in the last bit from the TypeScript twin's plain
+    left-to-right reduce, and a rounded second can flip on it.
+    """
+    acc = 0
+    for x in items:
+        acc += num(x if f is None else f(x))
+    return acc
 
 
 def group_by(items, key):

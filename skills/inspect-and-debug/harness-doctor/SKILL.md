@@ -12,28 +12,26 @@ version: 1.0.0
 
 **Harness Doctor is the fleet view over the agent's own history.** It mines the last `$days` of agent transcripts across every project on this machine and answers one question — where did the wall-clock, the tokens, and the repeated corrections go, and what change stops the bleeding. It reads the whole session tree, workflow and subagent transcripts included, and turns it into five fact tables plus a ranked fix list. The waste is invisible from inside any single session: a command that costs 9 seconds is nothing until you see it ran 1,400 times.
 
-This is a **user-invoked** command (`/harness-doctor`); the window in days arrives as `$days` and defaults to 30.
+This is a **user-invoked** command (`/harness-doctor`); the window in days arrives as `$days`. When it is empty, use 30 — the templates below already do.
 
 ## How to run
 
 The auditor is zero-dependency with **no build step**, shipped twice: `scripts/audit.ts` and `scripts/audit.py`. They take the same flags and write the same tables — pick whichever runtime exists. Detect with `command -v node bun python3` on macOS/Linux, or `where node bun python` on Windows, then run from the skill's `scripts/` dir:
 
 ```bash
-node audit.ts --days "$days"        # Node >= 22.18 (native TS type-stripping)
-bun run audit.ts --days "$days"     # Bun
-npx tsx audit.ts --days "$days"     # older Node, no install needed
-python3 audit.py --days "$days"     # no JS runtime at all
+node audit.ts --days "${days:-30}"        # Node >= 22.18 (native TS type-stripping)
+bun run audit.ts --days "${days:-30}"     # Bun
+npx tsx audit.ts --days "${days:-30}"     # older Node, no install needed
+python3 audit.py --days "${days:-30}"     # no JS runtime at all
 ```
 
-The summary goes to **stdout**; progress goes to **stderr**, so `node audit.ts --format json > facts.json` stays clean. The last stdout line in `md` mode is the work dir holding the fact tables.
+The summary goes to **stdout**; progress goes to **stderr**, so `node audit.ts --format json > facts.json` stays clean. In `md` mode the last stdout line is the work dir holding the fact tables — `--no-tables` writes none and prints none.
 
-The rest of the flags: `--project <substr>` narrows to project dirs matching the substring (repeatable), `--top <n>` sets rows per ranking (default 15), `--format json` emits the machine shape documented in `reference/stats.md`, `--out <dir>` moves the fact tables (default `<tmpdir>/harness-audit`), `--root <path>` points at a different transcripts root, `--no-tables` computes the aggregates without writing the tables to disk, `--no-redact` turns off secret redaction, `--pricing <file>` overrides the built-in price table.
+Three more flags carry the work: `--project <substr>` narrows to project dirs matching the substring (repeatable); `--top <n>` sets rows per ranking (default 15), but `--format md` clamps every table to 25 rows whatever `--top` says, so ask for a deeper table with `--format json`; `--format json` emits the machine shape documented in `reference/stats.md`. The rarer ones — `--out`, `--root`, `--no-tables`, `--no-redact`, `--pricing` — are in the CLI table in `reference/stats.md`. **`--no-redact` writes prompts and command output verbatim, secrets included: pass it only when the user asks for it by name.**
 
 ## If the script does not run here
 
-**The fact tables are the contract, not the script.** When neither runtime works, or the user's agent stores transcripts somewhere other than `~/.claude/projects`, write your own extractor: walk the transcript tree, emit `sessions.jsonl`, `tools.jsonl`, `bash.jsonl`, `user-msgs.jsonl`, and `errors.jsonl` with the exact field names in `reference/stats.md`, then continue from *Read the summary, then dig* unchanged. Every angle downstream reads those five files and nothing else.
-
-Two things that trip an extractor, both worth checking in your own output: subagent and workflow transcripts are **nested** under `<project>/<parent-sid>/subagents/**/agent-*.jsonl`, so a `*/*.jsonl` glob finds roughly a tenth of the corpus; and `journal.jsonl` and `*.meta.json` are not transcripts.
+**The fact tables are the contract, not the script.** When neither runtime works, or transcripts live outside `~/.claude/projects`, write your own extractor to the five tables in `reference/stats.md`, then continue from *Read the summary, then dig* unchanged. Every angle downstream reads those five files and nothing else.
 
 When a full scan is too slow, rerun with `--days 7` and **say in the report that the window is 7 days**, so every number is read against the right denominator.
 
@@ -53,7 +51,7 @@ The script does the counting. Your job starts after it: read the summary, pick t
 | `projects` | Per-repo setup gaps | `sessions.jsonl` + the repo on disk |
 | `web` | Web research | `tools.jsonl` |
 
-For a thorough run, **fan out one agent per angle**, each given the work dir path, the angle's section of `reference/angles.md`, and the instruction to recompute its own numbers before reporting. Then merge. For a quick run, take the two or three angles with the largest numbers in the summary and work them yourself.
+**Fan out one agent per angle** when the window holds more than ~500 sessions (`window.filesScanned`) or the user asked for a full audit: give each the work dir path, its angle's section of `reference/angles.md`, and the instruction to recompute its own numbers before reporting, then merge. Below that, work the three angles with the largest numbers in the summary yourself.
 
 Dig with `jq`, `rg`, or a throwaway script over the JSONL — the tables are line-oriented and sized for it. Move data with code: filter and aggregate on disk, and read only the rows you will quote.
 
@@ -64,7 +62,7 @@ Dig with `jq`, `rg`, or a throwaway script over the JSONL — the tables are lin
 Two failures from a real run of this analysis, both of which passed a casual read:
 
 - **Spend reported as saving.** The headline claimed a large dollar figure would be recovered, when the figure was the estimated *total* cost of the window. A saving is a difference between two numbers you can both name: before, after, and the change that moves one to the other.
-- **The skill's own text counted as user complaints.** A keyword scan for correction words matched harness-generated turns and quoted instructions echoing through transcripts, reporting 41 complaints where 24 were real. Count only rows with `human: true` in `user-msgs.jsonl`, and read the sample text of every bucket before you trust its count.
+- **The skill's own text counted as user complaints.** A keyword scan for correction words matched harness-generated turns and quoted instructions echoing through transcripts, reporting 41 complaints where 24 were real. Count only rows with `human: true` in `user-msgs.jsonl`, and **re-read every correction you are about to quote** in its own row: the bucket matched a phrase, it did not read the turn.
 
 ## What to produce
 
@@ -98,12 +96,11 @@ Cross-check the setting against the data either way. Compare the `days` asked fo
 - **Propose, then ask.** `CLAUDE.md`, `settings.json`, and `package.json` are user-owned and durable. Show the change and its number, offer to apply it, and edit the file only after an explicit yes to that change.
 - **Absence of evidence is not evidence of absence.** This is one machine, one local history, possibly pruned or compacted. Report "I found no trace of X in the scanned window", never "you don't do X".
 - **Check the fix is not already on disk.** Read the `projects` section and the repo before recommending a script, a rule, or a setting that already exists there; a duplicate rule is worse than none.
-- **`durSec` is approximate and cost is estimated.** Say that once, near the first table that uses either, then state numbers plainly. Hedging every line makes the whole report unreadable.
-- **The fact tables contain real prompts and real command output.** They land on disk at the work dir printed on the last stdout line. Redaction is best-effort and on by default. Tell the user where the files are and that deleting them is theirs to do.
+- **`durSec` is approximate and cost is estimated.** What each measures is in `reference/stats.md`; say it once, near the first table that uses either, then state numbers plainly. Hedging every line makes the whole report unreadable.
+- **The fact tables contain real prompts and real command output.** They land on disk at the work dir printed on the last stdout line, when tables were written at all. Redaction is best-effort and on by default; `--no-redact` writes secrets verbatim and is only for a user who asked for it. Tell the user where the files are and that deleting them is theirs to do.
 - **Quote sparingly.** Short evidence lines only. The report is a fix list, not a transcript excerpt.
 
 ## Notes
 
 - **Claude Code transcripts only in v1.** Codex rollouts (`~/.codex/sessions/**/rollout-*.jsonl`) carry a different line shape and are skipped. Say so when a user asks about a Codex session.
-- **The nested-transcript trap is the one that ruins a corpus silently.** In the reference dataset 2,715 of 3,101 transcripts were nested workflow agents. A scan that finds only main sessions still prints a plausible-looking report.
 - **Large corpora take minutes.** Thousands of transcripts and gigabytes of JSONL are normal; progress lines on stderr show where it is.

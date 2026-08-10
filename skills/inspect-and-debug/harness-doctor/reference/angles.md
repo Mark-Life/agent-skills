@@ -34,7 +34,7 @@ Field names and section names below are documented in `stats.md`.
 - `EACCES` on `.next/` 12 times in one repo, all after a `sudo`-built artifact. One `chown -R "$USER" .next` and the cluster ends.
 - `gh pr create` retried a median of 4 times after an auth error in 9 sessions. `gh auth login` once, plus a `CLAUDE.md` line pointing at it when a `gh` call returns 401.
 
-**Trap.** `sig` masks paths, numbers, hashes, and quoted strings, so two unrelated causes can land in one cluster. Read `sampleMsg` and at least two raw rows before naming a cause. Second trap: separate "once per session across 300 sessions" from "300 times in one session" using `sessionCount`, not `count`. The first is an environment gap and a rule fixes it; the second is one bad loop and only that session needs anything.
+**Trap.** `sig` masks paths, numbers, hashes, and quoted strings, so two unrelated causes can land in one cluster. Read `sampleMsg` and at least two raw rows before naming a cause. Second trap: `missingBinaries` mixes binaries the shell could not find with ENOENT *file* targets under the same `bin` key — a top row reading `content/courses/.../01-set-up.mdx` is a Python `FileNotFoundError`, not a missing binary. Read `sampleMsg` and drop rows whose `bin` holds a `/` or a file extension before recommending an install. Third trap: separate "once per session across 300 sessions" from "300 times in one session" using `sessionCount`, not `count`. The first is an environment gap and a rule fixes it; the second is one bad loop and only that session needs anything.
 
 ---
 
@@ -63,7 +63,7 @@ Field names and section names below are documented in `stats.md`.
 - 31 interrupts across 12 sessions, 27 of them during a `Bash` call whose `durSec` was over 60s. Same fix as the foreground long-runners in angle 1.
 - "don't add comments explaining what the code does" 6 times in 5 sessions. Add it to the repo's `CLAUDE.md` next to the existing style rules, where the existing rules already are.
 
-**Trap.** This is the angle that fabricates results if you let it. A naive keyword scan in the reference audit reported 41 complaints where 24 were real: the rest were harness-generated turns and the skill's own instruction text echoing back through transcripts. `human: false` marks `isMeta`, `<system-reminder>`, `<task-notification>`, `<command-name>`, `[Request interrupted`, and tool-result-only turns. Filter to `human: true` first, then read every sample in a bucket before trusting its count. Second trap: the same correction repeated three times inside one session is one frustration, not three. Cluster by session, then count sessions.
+**Trap.** This is the angle that fabricates results if you let it. A naive keyword scan in the reference audit reported 41 complaints where 24 were real: the rest were harness-generated turns and the skill's own instruction text echoing back through transcripts. Filter to `human: true` (SKILL.md, *Verify before you report*), then read every sample in a bucket before trusting its count: a bucket matched a phrase, it did not read the turn. Second trap: the same correction repeated three times inside one session is one frustration, not three. Cluster by session, then count sessions.
 
 ---
 

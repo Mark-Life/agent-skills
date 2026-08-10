@@ -1,545 +1,390 @@
-"""Aggregate the fact-table rows into the harness-doctor report sections.
+"""Turn the five fact tables into the audit report.
 
-Every ranking is deterministic: sort by the metric (descending unless noted),
-then by a stable string tiebreaker, then cap to top_n. The (rows, droppedCount)
-shape lets callers report how many rows a ranking cut off.
+The Python twin of `lib/aggregate.ts`: the same sections, the same field names
+from `lib/types.ts`, and the same `{rows, shown, total, dropped}` wrapper around
+every ranking, so `--format json` is interchangeable between the runtimes.
+Everything is deterministic: rankings sort by their metric then by a stable
+string key, and every record is built with sorted keys.
 """
 
-import json
-import re
-import statistics
-from collections import Counter, defaultdict
-from datetime import datetime, timezone
-from pathlib import Path
+import time
 
 from . import cost as cost_mod
-
-_MISSING_BIN_MARKERS = ("command not found", "No such file or directory", "ENOENT")
-_PERMISSION_MARKERS = ("Permission denied", "EACCES")
-_INTERRUPT_MARK = "[Request interrupted"
-_FLAG_FLAIL_WINDOW_SEC = 600
-_RETRY_LOOP_WINDOW_SEC = 300
-
-_CORRECTION_BUCKETS = (
-    ("negation", re.compile(r"(?i)\bno[,.!]|\bnot what i (?:asked|wanted|meant)\b")),
-    ("wrong", re.compile(r"(?i)\bwrong\b|\bincorrect\b|\bthat.?s not right\b")),
-    ("revert", re.compile(r"(?i)\brevert\b|\bundo\b|\broll ?back\b")),
-    ("stop", re.compile(r"(?i)\bstop\b|\bhalt\b|\bdon.?t do that\b")),
-    ("redo", re.compile(r"(?i)\btry again\b|\bredo\b|\bretry\b")),
+from .aggregate_commands import commands_section, errors_section
+from .aggregate_human import human_section
+from .aggregate_projects import projects_section
+from .stats import (
+    clip, group_by, iso_of, median, percentile, ranking, round_to, safe_div,
+    sorted_record, top_key, total, uniq_sorted,
 )
 
+# Session kinds in fixed report order, so the JSON never reorders.
+_KINDS = ("main", "subagent", "workflow-agent")
 
-def _iso(ts):
-    return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+# The two web tools this audit tracks.
+_WEB_TOOLS = ("WebFetch", "WebSearch")
 
-
-def _median(values):
-    return statistics.median(values) if values else 0.0
-
-
-def _p95(values):
-    if not values:
-        return 0.0
-    s = sorted(values)
-    idx = min(len(s) - 1, int(round(0.95 * (len(s) - 1))))
-    return s[idx]
+# Chars per token, the estimate used for anything not covered by usage metadata.
+_CHARS_PER_TOKEN = 4
 
 
-def rank(items, key, top_n, tiebreak, reverse=True):
-    """Sort items by key (descending unless reverse=False), then by the
-    stable tiebreaker, cap to top_n. Returns (top, droppedCount).
+def _no_totals():
+    return {"in": 0, "out": 0, "cacheRead": 0, "cacheCreate": 0}
+
+
+def _totals_of(session):
+    """A session's usage as a token-totals block."""
+    return {
+        "in": session.get("inTokens", 0),
+        "out": session.get("outTokens", 0),
+        "cacheRead": session.get("cacheReadTokens", 0),
+        "cacheCreate": session.get("cacheCreateTokens", 0),
+    }
+
+
+def _sum_totals(sessions):
+    """Sum token totals over sessions."""
+    acc = _no_totals()
+    for s in sessions:
+        t = _totals_of(s)
+        for key in acc:
+            acc[key] += t[key]
+    return acc
+
+
+def _round_totals(t):
+    """Round a totals block to whole tokens."""
+    return {key: int(round_to(value, 0)) for key, value in t.items()}
+
+
+def _grand_total(t):
+    """Every token in a totals block, for ranking by size."""
+    return t["in"] + t["out"] + t["cacheRead"] + t["cacheCreate"]
+
+
+def _split_by_model(session):
+    """Split a session's tokens across its models, in proportion to call counts.
+
+    Usage is recorded per session, not per model, so this is an attribution, not
+    a measurement: it only matters for sessions that switched model mid-run.
     """
-    sign = -1 if reverse else 1
-    ordered = sorted(items, key=lambda x: (sign * _num(key(x)), tiebreak(x)))
-    return ordered[:top_n], max(0, len(ordered) - top_n)
+    models = sorted(session.get("models") or {})
+    calls = sum((session.get("models") or {}).get(m, 0) for m in models)
+    totals = _totals_of(session)
+    if not models or calls == 0:
+        return [("(unknown)", totals)]
+    out = []
+    for model in models:
+        share = (session["models"].get(model, 0)) / calls
+        out.append((model, {key: value * share for key, value in totals.items()}))
+    return out
 
 
-def _num(v):
-    return v if isinstance(v, (int, float)) and v == v else 0
+def _session_cost(session, pricing):
+    """Estimated USD for one session, priced per model slice."""
+    usd = 0.0
+    for model, totals in _split_by_model(session):
+        usage = dict(totals)
+        usage["model"] = model
+        usd += cost_mod.estimate_cost(usage, pricing)
+    return usd
 
 
-# ---------------------------------------------------------------- window ---
+def _cost_of(sessions, pricing):
+    """Estimated USD for a set of sessions, summed left to right like the twin."""
+    return total(sessions, lambda s: _session_cost(s, pricing))
 
-def build_window(days, stats, sessions):
-    by_kind = Counter(s["kind"] for s in sessions)
+
+def _window_section(days, sessions, stats):
+    by_kind = [(kind, len([s for s in sessions if s["kind"] == kind])) for kind in _KINDS]
     return {
         "days": days,
-        "fromIso": _iso(stats["fromTs"]),
-        "toIso": _iso(stats["toTs"]),
+        "fromIso": iso_of(stats["fromEpoch"]),
+        "toIso": iso_of(stats["toEpoch"]),
         "filesScanned": stats["filesScanned"],
         "filesSkipped": stats["filesSkipped"],
-        "sessionsByKind": {k: by_kind.get(k, 0) for k in ("main", "subagent", "workflow-agent")},
-        "projectCount": len({s["proj"] for s in sessions}),
+        "sessionsByKind": sorted_record(by_kind),
+        "projectCount": stats.get("projectCount", len({s["proj"] for s in sessions})),
     }
 
 
-# ---------------------------------------------------------------- tokens ---
-
-def _price_model(model, counts, pricing):
-    fam = cost_mod.family_for_model(model)
-    rate = pricing[fam or "sonnet"]
-    return cost_mod.price_tokens(counts, rate), fam is None
-
-
-def build_tokens(sessions, stats, pricing, top_n):
-    totals = {"in": 0, "out": 0, "cacheRead": 0, "cacheCreate": 0}
-    by_kind = {k: {"in": 0, "out": 0, "cacheRead": 0, "cacheCreate": 0} for k in ("main", "subagent", "workflow-agent")}
-    by_proj = defaultdict(lambda: {"in": 0, "out": 0, "cacheRead": 0, "cacheCreate": 0})
-
-    for s in sessions:
-        c = {"in": s.get("inTokens", 0), "out": s.get("outTokens", 0),
-             "cacheRead": s.get("cacheReadTokens", 0), "cacheCreate": s.get("cacheCreateTokens", 0)}
-        for k in totals:
-            totals[k] += c[k]
-        bk = by_kind[s["kind"]]
-        for k in bk:
-            bk[k] += c[k]
-        bp = by_proj[s["proj"]]
-        for k in bp:
-            bp[k] += c[k]
-
-    model_tokens = stats.get("modelTokens", {})
+def _tokens_section(sessions, pricing, top):
+    """Tokens split every useful way, with the cost estimate and its price table."""
     by_model = {}
-    unpriced = []
-    total_cost = 0.0
-    for model in sorted(model_tokens, key=lambda m: (-sum(model_tokens[m].values()), m)):
-        counts = model_tokens[model]
-        usd, is_unpriced = _price_model(model, counts, pricing)
-        entry = dict(counts)
-        entry["estCostUsd"] = round(usd, 4)
-        by_model[model] = entry
-        total_cost += usd
-        if is_unpriced:
-            unpriced.append(model)
-
-    proj_rows = []
-    for proj, c in by_proj.items():
-        row = dict(c)
-        row["proj"] = proj
-        row["totalTokens"] = sum(c.values())
-        proj_rows.append(row)
-    ranked_proj, dropped_proj = rank(proj_rows, lambda r: r["totalTokens"], top_n, lambda r: r["proj"])
-
+    unpriced = set()
+    for s in sessions:
+        for model, totals in _split_by_model(s):
+            acc = by_model.setdefault(model, _no_totals())
+            for key in acc:
+                acc[key] += totals[key]
+            known = model != "(unknown)" and cost_mod.price_for(model, pricing)["priced"]
+            if not known and _grand_total(totals) > 0:
+                unpriced.add(model)
+    by_kind = [
+        (kind, _round_totals(_sum_totals([s for s in sessions if s["kind"] == kind])))
+        for kind in _KINDS
+    ]
+    projects = [{
+        "proj": proj,
+        "totals": _round_totals(_sum_totals(rows)),
+        "estCostUsd": round_to(_cost_of(rows, pricing), 4),
+        "sessions": len(rows),
+    } for proj, rows in group_by(sessions, lambda s: s["proj"]).items()]
     return {
-        "totals": totals,
-        "byModel": by_model,
-        "byKind": by_kind,
-        "byProject": ranked_proj,
-        "byProjectDroppedCount": dropped_proj,
-        "estCostUsd": round(total_cost, 4),
+        "totals": _round_totals(_sum_totals(sessions)),
+        "byModel": sorted_record([(m, _round_totals(t)) for m, t in by_model.items()]),
+        "byKind": sorted_record(by_kind),
+        "byProject": ranking(projects, lambda r: _grand_total(r["totals"]), lambda r: r["proj"], top),
+        "estCostUsd": round_to(_cost_of(sessions, pricing), 2),
         "pricing": pricing,
-        "unpricedModels": sorted(set(unpriced)),
+        "unpricedModels": uniq_sorted(unpriced),
+        "note": cost_mod.PRICING_NOTE,
     }
 
 
-# -------------------------------------------------------------- wallClock ---
-
-def build_wall_clock(tool_rows, top_n):
-    total_sec = sum(r.get("durSec") or 0 for r in tool_rows)
-    by_tool = defaultdict(float)
-    by_proj = defaultdict(float)
-    for r in tool_rows:
-        d = r.get("durSec") or 0
-        by_tool[r["tool"]] += d
-        by_proj[r.get("proj", "")] += d
-    tool_rows_agg = [{"tool": t, "totalSec": round(s, 3)} for t, s in by_tool.items()]
-    ranked_tool, _ = rank(tool_rows_agg, lambda r: r["totalSec"], top_n, lambda r: r["tool"])
-    proj_rows_agg = [{"proj": p, "totalSec": round(s, 3)} for p, s in by_proj.items()]
-    ranked_proj, dropped_proj = rank(proj_rows_agg, lambda r: r["totalSec"], top_n, lambda r: r["proj"])
-    return {
-        "totalToolSec": round(total_sec, 3),
-        "byTool": ranked_tool,
-        "byProject": ranked_proj,
-        "byProjectDroppedCount": dropped_proj,
-        "note": "durSec is approximate: it is result timestamp minus call timestamp and includes harness overhead.",
-    }
+def _bash_as_tools(bash):
+    """Bash rows viewed as tool rows, so wall-clock and big outputs cover them."""
+    return [{
+        "sid": b["sid"], "proj": b["proj"], "kind": b["kind"], "t": b.get("t"),
+        "tool": "Bash", "durSec": b.get("durSec"), "err": b.get("err", False),
+        "outChars": b.get("outChars", 0), "arg": clip(b.get("cmd", ""), 200),
+        "side": b.get("side", False),
+    } for b in bash]
 
 
-# --------------------------------------------------------------- commands ---
+def _all_tool_rows(tools, bash):
+    """Tool rows plus bash rows, without double counting."""
+    if any(r.get("tool") == "Bash" for r in tools):
+        return list(tools)
+    return list(tools) + _bash_as_tools(bash)
 
-def _family_stats(bash_rows):
-    groups = defaultdict(list)
-    for r in bash_rows:
-        groups[(r.get("family", ""), r.get("bin", ""))].append(r)
-    rows = []
-    for (family, binname), items in groups.items():
-        durs = [r.get("durSec") for r in items if r.get("durSec") is not None]
-        err_count = sum(1 for r in items if r.get("err"))
-        rows.append({
-            "family": family, "bin": binname, "count": len(items),
-            "totalSec": round(sum(durs), 3), "medianSec": round(_median(durs), 3),
-            "p95Sec": round(_p95(durs), 3),
-            "errRate": round(err_count / len(items), 4) if items else 0.0,
+
+def _wall_clock_section(rows, top):
+    """Seconds attributed to tool calls, by tool and by project."""
+    by_tool = []
+    for tool, group in group_by(rows, lambda r: r.get("tool", "")).items():
+        secs = [r.get("durSec") or 0 for r in group]
+        by_tool.append({
+            "tool": tool,
+            "calls": len(group),
+            "totalSec": round_to(total(secs), 1),
+            "medianSec": round_to(median(secs), 2),
+            "p95Sec": round_to(percentile(secs, 0.95), 2),
+            "errRate": round_to(safe_div(len([r for r in group if r.get("err")]), len(group)), 4),
         })
-    return rows
-
-
-def _repeats_in_session(bash_rows, top_n):
-    groups = defaultdict(list)
-    for r in bash_rows:
-        groups[(r["sid"], r.get("proj", ""), r.get("cmd", ""))].append(r)
-    rows = []
-    for (sid, proj, cmd), items in groups.items():
-        if len(items) < 2:
-            continue
-        ordered = sorted(items, key=lambda r: r.get("t") or 0)
-        wasted = sum((r.get("durSec") or 0) for r in ordered[1:])
-        rows.append({"sid": sid, "proj": proj, "cmd": cmd[:200], "occurrences": len(items), "wastedSec": round(wasted, 3)})
-    return rank(rows, lambda r: r["wastedSec"], top_n, lambda r: (r["sid"], r["cmd"]))
-
-
-def _flag_flailing(bash_rows, top_n):
-    groups = defaultdict(list)
-    for r in bash_rows:
-        if r.get("t") is None:
-            continue
-        groups[(r["sid"], r.get("proj", ""), r.get("bin", ""))].append(r)
-    rows = []
-    for (sid, proj, binname), items in groups.items():
-        items = sorted(items, key=lambda r: r["t"])
-        n = len(items)
-        max_distinct = 0
-        for i in range(n):
-            distinct = set()
-            j = i
-            while j < n and items[j]["t"] - items[i]["t"] <= _FLAG_FLAIL_WINDOW_SEC:
-                distinct.add(items[j].get("family", ""))
-                j += 1
-            max_distinct = max(max_distinct, len(distinct))
-        if max_distinct >= 4:
-            total_sec = sum(r.get("durSec") or 0 for r in items)
-            rows.append({"sid": sid, "proj": proj, "bin": binname, "distinctCommands": max_distinct,
-                         "occurrences": n, "totalSec": round(total_sec, 3)})
-    return rank(rows, lambda r: r["totalSec"], top_n, lambda r: (r["sid"], r["bin"]))
-
-
-def build_commands(bash_rows, top_n):
-    family_rows = _family_stats(bash_rows)
-    by_total, dropped_total = rank(family_rows, lambda r: r["totalSec"], top_n, lambda r: (r["family"], r["bin"]))
-    by_count, dropped_count = rank(family_rows, lambda r: r["count"], top_n, lambda r: (r["family"], r["bin"]))
-    repeats, dropped_repeats = _repeats_in_session(bash_rows, top_n)
-    flailing, dropped_flailing = _flag_flailing(bash_rows, top_n)
+    by_project = [{
+        "proj": proj,
+        "calls": len(group),
+        "totalSec": round_to(total(group, lambda r: r.get("durSec") or 0), 1),
+    } for proj, group in group_by(rows, lambda r: r.get("proj", "")).items()]
     return {
-        "familiesByTotalSec": by_total, "familiesByTotalSecDroppedCount": dropped_total,
-        "familiesByCount": by_count, "familiesByCountDroppedCount": dropped_count,
-        "repeatsInSession": repeats, "repeatsInSessionDroppedCount": dropped_repeats,
-        "flagFlailing": flailing, "flagFlailingDroppedCount": dropped_flailing,
+        "totalToolSec": round_to(total(rows, lambda r: r.get("durSec") or 0), 1),
+        "byTool": ranking(by_tool, lambda r: r["totalSec"], lambda r: r["tool"], top),
+        "byProject": ranking(by_project, lambda r: r["totalSec"], lambda r: r["proj"], top),
+        "note": (
+            "durSec is the gap between a tool call and its result: it includes harness "
+            "overhead, model thinking between blocks, and any wait for approval. Treat "
+            "it as an upper bound on real tool time."
+        ),
     }
 
 
-# ----------------------------------------------------------------- errors ---
+def _context_section(sessions, rows, pricing, top):
+    """What filled the context window, and what refilled it."""
+    top_sessions = [{
+        "sid": s["sid"], "proj": s["proj"], "kind": s["kind"],
+        "maxCtx": s.get("maxCtx", 0),
+        "cacheReadTokens": s.get("cacheReadTokens", 0),
+        "cacheCreateTokens": s.get("cacheCreateTokens", 0),
+        "estCostUsd": round_to(_session_cost(s, pricing), 4),
+    } for s in sessions]
 
-def _error_clusters(error_rows, top_n):
-    groups = defaultdict(list)
-    for r in error_rows:
-        groups[r.get("sig", "")].append(r)
-    rows = []
-    for sig, items in groups.items():
-        tool_counts = Counter(r.get("tool") for r in items if r.get("tool"))
-        row = {
-            "sig": sig, "count": len(items), "sessionCount": len({r["sid"] for r in items}),
-            "projects": sorted({r["proj"] for r in items}), "sampleMsg": items[0].get("msg", ""),
-        }
-        if tool_counts:
-            row["topTool"] = tool_counts.most_common(1)[0][0]
-        rows.append(row)
-    return rank(rows, lambda r: r["count"], top_n, lambda r: r["sig"])
-
-
-def _missing_binaries(bash_rows, top_n):
-    groups = defaultdict(list)
-    for r in bash_rows:
-        if r.get("err") and any(m in r.get("out", "") for m in _MISSING_BIN_MARKERS):
-            groups[r.get("bin", "")].append(r)
-    rows = [{"bin": b, "count": len(items), "sample": items[0].get("cmd", "")[:200]} for b, items in groups.items()]
-    return rank(rows, lambda r: r["count"], top_n, lambda r: r["bin"])
-
-
-def _permission_denied(bash_rows, top_n):
-    groups = defaultdict(list)
-    for r in bash_rows:
-        if r.get("err") and any(m in r.get("out", "") for m in _PERMISSION_MARKERS):
-            groups[r.get("family", "")].append(r)
-    rows = [{"family": f, "count": len(items), "sample": items[0].get("cmd", "")[:200]} for f, items in groups.items()]
-    return rank(rows, lambda r: r["count"], top_n, lambda r: r["family"])
-
-
-def _retry_loops(bash_rows, top_n):
-    by_sid = defaultdict(list)
-    for r in bash_rows:
-        if r.get("t") is not None:
-            by_sid[r["sid"]].append(r)
-    episodes = defaultdict(list)
-    for items in by_sid.values():
-        items = sorted(items, key=lambda r: r["t"])
-        n = len(items)
-        i = 0
-        while i < n:
-            if items[i].get("err"):
-                family = items[i].get("family", "")
-                t0 = items[i]["t"]
-                retries = 0
-                j = i + 1
-                while j < n and items[j]["t"] - t0 <= _RETRY_LOOP_WINDOW_SEC:
-                    if items[j].get("family") == family:
-                        retries += 1
-                    j += 1
-                if retries > 0:
-                    episodes[family].append(retries)
-            i += 1
-    rows = [{"family": f, "count": len(v), "medianRetries": round(_median(v), 2)} for f, v in episodes.items()]
-    return rank(rows, lambda r: r["count"], top_n, lambda r: r["family"])
-
-
-def build_errors(bash_rows, error_rows, top_n):
-    clusters, dropped_clusters = _error_clusters(error_rows, top_n)
-    missing, dropped_missing = _missing_binaries(bash_rows, top_n)
-    denied, dropped_denied = _permission_denied(bash_rows, top_n)
-    retries, dropped_retries = _retry_loops(bash_rows, top_n)
-    return {
-        "clusters": clusters, "clustersDroppedCount": dropped_clusters,
-        "missingBinaries": missing, "missingBinariesDroppedCount": dropped_missing,
-        "permissionDenied": denied, "permissionDeniedDroppedCount": dropped_denied,
-        "retryLoops": retries, "retryLoopsDroppedCount": dropped_retries,
-    }
-
-
-# ----------------------------------------------------------------- context ---
-
-def build_context(sessions, tool_rows, top_n):
-    session_rows = [{"sid": s["sid"], "proj": s["proj"], "kind": s["kind"], "maxCtx": s.get("maxCtx", 0)} for s in sessions]
-    top_sessions, dropped_sessions = rank(session_rows, lambda r: r["maxCtx"], top_n, lambda r: r["sid"])
-
-    big_rows = []
-    by_tool_chars = defaultdict(list)
-    for r in tool_rows:
-        chars = r.get("outChars", 0)
-        by_tool_chars[r["tool"]].append(chars)
-        row = {"sid": r["sid"], "proj": r["proj"], "tool": r["tool"], "outChars": chars}
-        if r.get("arg"):
-            row["arg"] = r["arg"]
-        big_rows.append(row)
-    big_outputs, dropped_big = rank(big_rows, lambda r: r["outChars"], top_n, lambda r: (r["sid"], r["tool"]))
-    p95_per_tool = {t: round(_p95(v), 1) for t, v in by_tool_chars.items()}
-    p95_per_tool = dict(sorted(p95_per_tool.items(), key=lambda kv: (-kv[1], kv[0])))
-
-    read_groups = defaultdict(list)
-    for r in tool_rows:
-        if r.get("tool") == "Read" and r.get("arg"):
-            read_groups[(r["sid"], r.get("proj", ""), r["arg"])].append(r)
-    re_read_rows = []
-    for (sid, proj, arg), items in read_groups.items():
-        if len(items) < 2:
+    big_outputs = []
+    for r in rows:
+        if r.get("outChars", 0) <= 0:
             continue
-        ordered = sorted(items, key=lambda r: r.get("t") or 0)
-        wasted_chars = sum(r.get("outChars", 0) for r in ordered[1:])
-        re_read_rows.append({"sid": sid, "proj": proj, "arg": arg, "occurrences": len(items),
-                             "wastedTokensEst": round(wasted_chars / 4)})
-    re_reads, dropped_re_reads = rank(re_read_rows, lambda r: r["wastedTokensEst"], top_n, lambda r: (r["sid"], r["arg"]))
+        row = {"sid": r["sid"], "proj": r["proj"], "tool": r.get("tool", "")}
+        if r.get("arg") is not None:
+            row["arg"] = clip(r["arg"], 200)
+        row["outChars"] = r["outChars"]
+        row["tokensEst"] = int(round_to(r["outChars"] / _CHARS_PER_TOKEN, 0))
+        big_outputs.append(row)
 
-    cache_acc = defaultdict(lambda: {"cacheRead": 0, "cacheCreate": 0})
-    for s in sessions:
-        a = cache_acc[s["kind"]]
-        a["cacheRead"] += s.get("cacheReadTokens", 0)
-        a["cacheCreate"] += s.get("cacheCreateTokens", 0)
-    cache_write_ratio = {}
-    for kind in ("main", "subagent", "workflow-agent"):
-        a = cache_acc.get(kind, {"cacheRead": 0, "cacheCreate": 0})
-        denom = a["cacheRead"] + a["cacheCreate"]
-        cache_write_ratio[kind] = round(a["cacheCreate"] / denom, 4) if denom else 0.0
+    p95_chars = [
+        (tool, int(round_to(percentile([r.get("outChars", 0) for r in group], 0.95), 0)))
+        for tool, group in group_by(rows, lambda r: r.get("tool", "")).items()
+    ]
 
-    return {
-        "topSessions": top_sessions, "topSessionsDroppedCount": dropped_sessions,
-        "bigOutputs": big_outputs, "bigOutputsDroppedCount": dropped_big, "bigOutputsP95PerTool": p95_per_tool,
-        "reReads": re_reads, "reReadsDroppedCount": dropped_re_reads,
-        "cacheWriteRatio": cache_write_ratio,
-    }
-
-
-# --------------------------------------------------------------------- web ---
-
-def build_web(tool_rows, sessions, top_n):
-    web_rows = [r for r in tool_rows if r.get("tool") in ("WebFetch", "WebSearch")]
-    counts = dict(Counter(r["tool"] for r in web_rows))
-    total_sec = round(sum(r.get("durSec") or 0 for r in web_rows), 3)
-    total_chars = sum(r.get("outChars", 0) for r in web_rows)
-    sid_to_run = {s["sid"]: s.get("run") for s in sessions}
-
-    groups = defaultdict(list)
-    for r in web_rows:
-        if r.get("arg"):
-            groups[(r["tool"], r["arg"])].append(r)
-    repeat_rows = []
-    for (tool, key), items in groups.items():
-        if len(items) < 2:
+    per_arg = {}
+    reads = [r for r in rows if r.get("tool") == "Read" and r.get("arg")]
+    for _, group in group_by(reads, lambda r: "%s %s" % (r["sid"], r.get("arg", ""))).items():
+        if len(group) < 2:
             continue
-        runs = {sid_to_run.get(r["sid"]) for r in items}
-        cross_run = not (len(runs) == 1 and next(iter(runs)) is not None)
-        repeat_rows.append({"tool": tool, "key": key[:300], "count": len(items),
-                            "chars": sum(r.get("outChars", 0) for r in items), "crossRun": cross_run})
-    repeats, dropped_repeats = rank(repeat_rows, lambda r: r["count"], top_n, lambda r: (r["tool"], r["key"]))
+        first = group[0]
+        entry = per_arg.setdefault(first["arg"], {"occurrences": 0, "sessions": set(), "chars": 0})
+        entry["occurrences"] += len(group) - 1
+        entry["sessions"].add(first["sid"])
+        entry["chars"] += total(group[1:], lambda r: r.get("outChars", 0))
+    re_reads = [{
+        "arg": clip(arg, 200), "occurrences": e["occurrences"], "sessions": len(e["sessions"]),
+        "wastedTokensEst": int(round_to(e["chars"] / _CHARS_PER_TOKEN, 0)),
+    } for arg, e in per_arg.items()]
 
-    run_counts = Counter(sid_to_run.get(r["sid"]) for r in web_rows if sid_to_run.get(r["sid"]))
-    conc_rows = [{"run": run, "count": c} for run, c in run_counts.items()]
-    concentration, dropped_conc = rank(conc_rows, lambda r: r["count"], top_n, lambda r: r["run"])
+    cache_write_ratio = []
+    for kind in _KINDS:
+        group = [s for s in sessions if s["kind"] == kind]
+        create = total(group, lambda s: s.get("cacheCreateTokens", 0))
+        read = total(group, lambda s: s.get("cacheReadTokens", 0))
+        cache_write_ratio.append((kind, round_to(safe_div(create, create + read), 4)))
 
     return {
-        "counts": counts, "totalSec": total_sec, "totalChars": total_chars,
-        "repeats": repeats, "repeatsDroppedCount": dropped_repeats,
-        "concentrationByRun": concentration, "concentrationByRunDroppedCount": dropped_conc,
+        "topSessions": ranking(top_sessions, lambda r: r["maxCtx"], lambda r: r["sid"], top),
+        "bigOutputs": ranking(
+            big_outputs, lambda r: r["outChars"],
+            lambda r: "%s %s %s" % (r["tool"], r.get("arg", ""), r["sid"]), top,
+        ),
+        "p95CharsByTool": sorted_record(p95_chars),
+        "reReads": ranking(re_reads, lambda r: r["wastedTokensEst"], lambda r: r["arg"], top),
+        "cacheWriteRatio": sorted_record(cache_write_ratio),
     }
 
 
-# ------------------------------------------------------------------ fanout ---
+def _web_section(tools, run_by_sid, top):
+    """WebFetch and WebSearch: volume, repeats, and the runs they landed in."""
+    web = [r for r in tools if r.get("tool") in _WEB_TOOLS]
+    by_tool = []
+    for tool in _WEB_TOOLS:
+        group = [r for r in web if r.get("tool") == tool]
+        by_tool.append((tool, {
+            "calls": len(group),
+            "sec": round_to(total(group, lambda r: r.get("durSec") or 0), 1),
+            "chars": int(total(group, lambda r: r.get("outChars", 0))),
+        }))
 
-def build_fanout(sessions, pricing, top_n):
-    groups = defaultdict(list)
-    for s in sessions:
-        if s.get("run"):
-            groups[s["run"]].append(s)
-    run_rows = []
-    for run, items in groups.items():
-        tokens_total = sum(s.get("inTokens", 0) + s.get("outTokens", 0) + s.get("cacheReadTokens", 0) + s.get("cacheCreateTokens", 0) for s in items)
-        cost_total = 0.0
-        for s in items:
-            model = next(iter(s.get("models") or {}), None)
-            counts = {"in": s.get("inTokens", 0), "out": s.get("outTokens", 0),
-                      "cacheRead": s.get("cacheReadTokens", 0), "cacheCreate": s.get("cacheCreateTokens", 0)}
-            usd, _ = _price_model(model, counts, pricing)
-            cost_total += usd
-        fturns = [s.get("firstTurnCacheCreate", 0) for s in items]
-        run_rows.append({"run": run, "agents": len(items), "tokens": tokens_total,
-                         "estCostUsd": round(cost_total, 4), "medianFirstTurnCacheCreate": round(_median(fturns), 1)})
-    by_cost, dropped_cost = rank(run_rows, lambda r: r["estCostUsd"], top_n, lambda r: r["run"])
+    repeats = []
+    repeat_calls = 0
+    keyed = [r for r in web if r.get("arg")]
+    for _, group in group_by(keyed, lambda r: "%s %s" % (r.get("tool", ""), r.get("arg", ""))).items():
+        if len(group) < 2:
+            continue
+        first = group[0]
+        repeat_calls += len(group) - 1
+        runs = {run_by_sid.get(r["sid"], "") for r in group}
+        repeats.append({
+            "tool": first.get("tool", ""),
+            "arg": clip(first.get("arg", ""), 200),
+            "count": len(group),
+            "chars": int(total(group, lambda r: r.get("outChars", 0))),
+            "sessions": len({r["sid"] for r in group}),
+            "sameRun": len(runs) == 1 and "" not in runs,
+        })
 
-    agent_rows = [s for s in sessions if s.get("run")]
-    ratios = []
-    for s in agent_rows:
-        cr = s.get("cacheReadTokens", 0)
-        ratios.append(s.get("outTokens", 0) / cr if cr else 0.0)
+    in_runs = [r for r in web if run_by_sid.get(r["sid"])]
+    by_run = [{
+        "run": run,
+        "calls": len(group),
+        "chars": int(total(group, lambda r: r.get("outChars", 0))),
+        "agents": len({r["sid"] for r in group}),
+    } for run, group in group_by(in_runs, lambda r: run_by_sid.get(r["sid"], "")).items()]
+
+    return {
+        "byTool": sorted_record(by_tool),
+        "totalCalls": len(web),
+        "totalSec": round_to(total(web, lambda r: r.get("durSec") or 0), 1),
+        "totalChars": int(total(web, lambda r: r.get("outChars", 0))),
+        "repeatRate": round_to(safe_div(repeat_calls, len(web)), 4),
+        "repeats": ranking(repeats, lambda r: r["count"], lambda r: "%s %s" % (r["tool"], r["arg"]), top),
+        "byRun": ranking(by_run, lambda r: r["calls"], lambda r: r["run"], top),
+    }
+
+
+def _fanout_section(sessions, pricing, top):
+    """What each workflow run spent, and which agents read without writing."""
+    agents = [s for s in sessions if s["kind"] != "main"]
+    wf = [s for s in sessions if s["kind"] == "workflow-agent" and s.get("run")]
+    runs = []
+    for run, group in group_by(wf, lambda s: s.get("run", "")).items():
+        projs = {}
+        for s in group:
+            projs[s["proj"]] = projs.get(s["proj"], 0) + 1
+        runs.append({
+            "run": run,
+            "proj": top_key(projs),
+            "agents": len(group),
+            "totals": _round_totals(_sum_totals(group)),
+            "estCostUsd": round_to(_cost_of(group, pricing), 4),
+            "medianFirstTurnCacheCreate": int(
+                round_to(median([s.get("firstTurnCacheCreate", 0) for s in group]), 0)
+            ),
+        })
+
+    candidates = [s for s in agents if s.get("cacheReadTokens", 0) > 0]
+    yields = [s["outTokens"] / s["cacheReadTokens"] for s in candidates]
+    threshold = percentile(yields, 0.1)
     low_yield = []
-    dropped_low = 0
-    if ratios:
-        threshold = sorted(ratios)[max(0, int(0.10 * (len(ratios) - 1)))]
-        candidates = []
-        for s, ratio in zip(agent_rows, ratios):
-            if ratio <= threshold:
-                candidates.append({"sid": s["sid"], "run": s.get("run"), "outTokens": s.get("outTokens", 0),
-                                   "cacheReadTokens": s.get("cacheReadTokens", 0), "ratio": round(ratio, 6)})
-        low_yield, dropped_low = rank(candidates, lambda r: r["ratio"], top_n, lambda r: r["sid"], reverse=False)
+    for s in candidates:
+        ratio = s["outTokens"] / s["cacheReadTokens"]
+        if ratio > threshold:
+            continue
+        row = {"sid": s["sid"]}
+        if s.get("run") is not None:
+            row["run"] = s["run"]
+        row.update({
+            "proj": s["proj"],
+            "outTokens": s.get("outTokens", 0),
+            "cacheReadTokens": s.get("cacheReadTokens", 0),
+            "yield": round_to(ratio, 6),
+            "estCostUsd": round_to(_session_cost(s, pricing), 4),
+        })
+        low_yield.append(row)
 
     return {
-        "byRun": by_cost, "byRunDroppedCount": dropped_cost,
-        "lowYield": low_yield, "lowYieldDroppedCount": dropped_low,
+        "runs": ranking(runs, lambda r: r["estCostUsd"], lambda r: r["run"], top),
+        "lowYield": ranking(low_yield, lambda r: r["cacheReadTokens"], lambda r: r["sid"], top),
+        "agentsWithFirstTurnCacheWrite": len([s for s in agents if s.get("firstTurnCacheCreate", 0) > 0]),
+        "totalFirstTurnCacheCreate": int(total(wf, lambda s: s.get("firstTurnCacheCreate", 0))),
     }
 
 
-# ------------------------------------------------------------------- human ---
-
-def _corrections(user_msgs):
-    human_rows = sorted((r for r in user_msgs if r.get("human")), key=lambda r: (r["sid"], r.get("t") or 0))
-    results = []
-    for name, pat in _CORRECTION_BUCKETS:
-        matches = [r for r in human_rows if pat.search(r["text"])]
-        results.append({"bucket": name, "count": len(matches), "samples": [m["text"][:200] for m in matches[:3]]})
-    results.sort(key=lambda r: (-r["count"], r["bucket"]))
-    return results
+def _resolve_to_epoch(sessions, given):
+    """Window end: the caller's value, else the latest timestamp, else now."""
+    if isinstance(given, (int, float)) and given > 0:
+        return given
+    stamps = [s.get("end") or 0 for s in sessions] + [s.get("start") or 0 for s in sessions]
+    latest = max(stamps) if stamps else 0
+    return latest if latest > 0 else int(time.time())
 
 
-def _normalize_request(text):
-    t = re.sub(r"\s+", " ", text.strip().lower())
-    return re.sub(r"[^a-z0-9 ]", "", t)[:100]
-
-
-def _repeated_requests(user_msgs, top_n):
-    groups = defaultdict(list)
-    for r in user_msgs:
-        if not r.get("human"):
-            continue
-        key = _normalize_request(r["text"])
-        if len(key) < 10:
-            continue
-        groups[key].append(r)
-    rows = []
-    for key, items in groups.items():
-        sids = sorted({r["sid"] for r in items})
-        if len(sids) < 2:
-            continue
-        rows.append({"clusterKey": key, "count": len(items), "sids": sids})
-    return rank(rows, lambda r: r["count"], top_n, lambda r: r["clusterKey"])
-
-
-def build_human(sessions, user_msgs, top_n):
-    human_count = sum(1 for r in user_msgs if r.get("human"))
-    interrupts = sum(s.get("interrupts", 0) for s in sessions)
-    repeated, dropped_repeated = _repeated_requests(user_msgs, top_n)
-    return {
-        "humanTurnCount": human_count,
-        "interrupts": interrupts,
-        "corrections": _corrections(user_msgs),
-        "repeatedRequests": repeated, "repeatedRequestsDroppedCount": dropped_repeated,
+def build(sessions, tools, bash, user_msgs, errors, stats, days, pricing, top, check_disk=True):
+    """Build the whole report from the fact tables, `schemaVersion` included."""
+    top = max(1, int(top))
+    to_epoch = _resolve_to_epoch(sessions, stats.get("toEpoch"))
+    from_epoch = stats.get("fromEpoch")
+    if from_epoch is None:
+        from_epoch = to_epoch - days * 86400
+    window_stats = {
+        "fromEpoch": from_epoch,
+        "toEpoch": to_epoch,
+        "filesScanned": stats.get("filesScanned", len(sessions)),
+        "filesSkipped": stats.get("filesSkipped", 0),
+        "projectCount": stats.get("projectCount", len({s["proj"] for s in sessions})),
     }
-
-
-# ---------------------------------------------------------------- projects ---
-
-def _on_disk_info(cwd):
-    info = {"claudeMd": False, "agentsMd": False, "claudeSettings": False, "packageJson": None}
-    if not cwd:
-        return info
-    base = Path(cwd)
-    info["claudeMd"] = (base / "CLAUDE.md").exists()
-    info["agentsMd"] = (base / "AGENTS.md").exists()
-    info["claudeSettings"] = (base / ".claude" / "settings.json").exists()
-    pkg_path = base / "package.json"
-    if pkg_path.exists():
-        try:
-            with open(pkg_path, "r", encoding="utf-8") as fh:
-                pkg = json.load(fh)
-            info["packageJson"] = {
-                "packageManager": pkg.get("packageManager"),
-                "scripts": sorted((pkg.get("scripts") or {}).keys()),
-            }
-        except (OSError, ValueError):
-            info["packageJson"] = {"packageManager": None, "scripts": []}
-    return info
-
-
-def build_projects(sessions, bash_rows, top_commands=5):
-    by_proj = defaultdict(list)
-    for s in sessions:
-        by_proj[s["proj"]].append(s)
-    bash_by_proj = defaultdict(list)
-    for r in bash_rows:
-        bash_by_proj[r.get("proj", "")].append(r)
-
-    rows = []
-    for proj, items in by_proj.items():
-        tokens = sum(s.get("inTokens", 0) + s.get("outTokens", 0) + s.get("cacheReadTokens", 0) + s.get("cacheCreateTokens", 0) for s in items)
-        bash_items = bash_by_proj.get(proj, [])
-        bash_sec = round(sum(r.get("durSec") or 0 for r in bash_items), 3)
-        fam_counts = Counter(r.get("family", "") for r in bash_items)
-        top_cmds = [f for f, _ in sorted(fam_counts.items(), key=lambda kv: (-kv[1], kv[0]))[:top_commands]]
-        cwd = next((s.get("cwd") for s in items if s.get("cwd")), None)
-        rows.append({"proj": proj, "cwd": cwd, "sessions": len(items), "tokens": tokens,
-                     "bashSec": bash_sec, "topCommands": top_cmds, "onDisk": _on_disk_info(cwd)})
-    rows.sort(key=lambda r: (-r["tokens"], r["proj"]))
-    return rows
-
-
-# ----------------------------------------------------------------- master ---
-
-def build(sessions, tools, bash_rows, user_msgs, errors, stats, days, pricing, top_n):
-    """Build the full aggregate dict (all sections, no schemaVersion wrapper)."""
+    merged = _all_tool_rows(tools, bash)
+    run_by_sid = {s["sid"]: s["run"] for s in sessions if s.get("run")}
     return {
-        "window": build_window(days, stats, sessions),
-        "tokens": build_tokens(sessions, stats, pricing, top_n),
-        "wallClock": build_wall_clock(tools, top_n),
-        "commands": build_commands(bash_rows, top_n),
-        "errors": build_errors(bash_rows, errors, top_n),
-        "context": build_context(sessions, tools, top_n),
-        "web": build_web(tools, sessions, top_n),
-        "fanout": build_fanout(sessions, pricing, top_n),
-        "human": build_human(sessions, user_msgs, top_n),
-        "projects": build_projects(sessions, bash_rows, min(5, top_n)),
+        "schemaVersion": 1,
+        "window": _window_section(days, sessions, window_stats),
+        "tokens": _tokens_section(sessions, pricing, top),
+        "wallClock": _wall_clock_section(merged, top),
+        "commands": commands_section(bash, top),
+        "errors": errors_section(errors, bash, top),
+        "context": _context_section(sessions, merged, pricing, top),
+        "web": _web_section(tools, run_by_sid, top),
+        "fanout": _fanout_section(sessions, pricing, top),
+        "human": human_section(user_msgs, sessions, top),
+        "projects": projects_section(
+            sessions, bash, top, check_disk,
+            lambda group: _round_totals(_sum_totals(group)),
+            lambda group: _cost_of(group, pricing),
+        ),
     }

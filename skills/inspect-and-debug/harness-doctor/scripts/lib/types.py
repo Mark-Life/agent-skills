@@ -22,8 +22,8 @@ class SessionRow(TypedDict, total=False):
     cwd: str
     branch: str
     ver: str
-    start: float
-    end: float
+    start: int
+    end: int
     kind: SessionKind
     parent: str
     run: str
@@ -47,7 +47,7 @@ class ToolRow(TypedDict, total=False):
     sid: str
     proj: str
     kind: SessionKind
-    t: float
+    t: int
     tool: str
     durSec: float
     err: bool
@@ -62,7 +62,7 @@ class BashRow(TypedDict, total=False):
     sid: str
     proj: str
     kind: SessionKind
-    t: float
+    t: int
     durSec: float
     err: bool
     outChars: int
@@ -81,7 +81,7 @@ class UserMsgRow(TypedDict, total=False):
     sid: str
     proj: str
     kind: SessionKind
-    t: float
+    t: int
     text: str
     side: bool
     human: bool
@@ -93,7 +93,7 @@ class ErrorRow(TypedDict, total=False):
     sid: str
     proj: str
     kind: SessionKind
-    t: float
+    t: int
     tool: str
     input: str
     msg: str

@@ -2,7 +2,21 @@
 
 The contract between the extractor and everything downstream. Two readers need this file: an agent writing its own extractor because the shipped script will not run here, and a program consuming `--format json`.
 
-Field names are identical in `audit.ts` and `audit.py`: camelCase, exactly as written below. **A field that is unknown or absent is omitted, never null.** Every ranking is sorted by its metric and then by a stable tiebreaker, so two runs over the same data produce byte-identical output.
+Field names are identical in `audit.ts` and `audit.py`: camelCase, exactly as written below. Over one frozen corpus the two runtimes write byte-identical fact tables and the same `--format json` values, apart from `window.fromIso`/`toIso`, which are the clock at run time. **A field that is unknown or absent is omitted, never null.** Every ranking is sorted by its metric and then by a stable tiebreaker, so two runs over the same data produce byte-identical output.
+
+## Flags
+
+| Flag | Meaning |
+| --- | --- |
+| `--days <n>` | Window in days, default 30. Must be positive. |
+| `--project <substr>` | Only project dirs containing this substring. Repeatable. |
+| `--top <n>` | Rows per ranking, default 15. `--format md` clamps every table to 25 rows on top of this; `--format json` honours it. |
+| `--format md\|json` | stdout summary format, default md. |
+| `--out <dir>` | Work dir for the fact tables, default `<tmpdir>/harness-audit`. |
+| `--root <path>` | Transcripts root, default `<home>/.claude/projects`. |
+| `--no-tables` | Compute the aggregates without writing the tables. No work dir is created, and none is printed. |
+| `--no-redact` | Write prompts and command output verbatim, secrets included. |
+| `--pricing <file>` | JSON overriding the built-in per-model rates, same shape as the table below. |
 
 ## Where the data comes from
 
@@ -112,7 +126,9 @@ One row per errored tool result.
 
 # `--format json`
 
-One object with `schemaVersion: 1` and the ten sections below. `--format md` renders the same data as markdown, capped so the summary stays under about 600 lines: rankings truncate to `--top` and state how many rows were dropped.
+One object with `schemaVersion: 1` and the ten sections below. `--format md` renders the same data as markdown, capped so the summary stays under about 600 lines: rankings truncate to `--top`, again to 25 rows, and state how many rows were dropped.
+
+**Every ranking is an object, not an array:** `{rows, shown, total, dropped}`, where `total` counts the rows that existed before the `--top` cap. The field names listed under each section are the fields of one row inside `rows`.
 
 **`schemaVersion` contract.** `1` is the shape documented here. A consumer should read `schemaVersion` and refuse anything higher than it knows. Additive fields inside a section do not bump it; a renamed or removed field does.
 
@@ -122,7 +138,9 @@ One object with `schemaVersion: 1` and the ten sections below. `--format md` ren
 
 ### `tokens`
 
-`totals` (`in`, `out`, `cacheRead`, `cacheCreate`), `byModel`, `byKind`, `byProject` (top N), and `estCostUsd` with the pricing block echoed alongside it and marked an estimate. `unpricedModels` lists model ids that matched no family and were priced as sonnet, so nothing is mispriced silently.
+`totals` (`in`, `out`, `cacheRead`, `cacheCreate`), `byModel` and `byKind` (both records of the same four fields), `byProject` (ranking of `proj`, `totals`, `estCostUsd`, `sessions`), `estCostUsd`, `pricing` (the table actually used), `unpricedModels` (ids that matched no family and were priced as sonnet), and `note`, the provenance line for the rates.
+
+**`byModel` is an attribution, not a measurement.** Usage is recorded per session, not per model, so a session's tokens are split across its models in proportion to per-model call counts. It is exact only for single-model sessions, and no fact table carries tokens per model, so a per-model figure cannot be recomputed from the tables. Do not quote one as measured.
 
 Default rates, USD per million tokens, matched to a family by substring in the model id:
 
@@ -136,38 +154,38 @@ Override the whole table with `--pricing <file>`, same shape. Cost is always pre
 
 ### `wallClock`
 
-`totalToolSec`, `byTool`, `byProject`, and a note that `durSec` is approximate.
+`totalToolSec`, `byTool` (`tool`, `calls`, `totalSec`, `medianSec`, `p95Sec`, `errRate`), `byProject` (`proj`, `calls`, `totalSec`), and `note`, which says out loud that `durSec` includes harness overhead.
 
 ### `commands`
 
-`families` ranked by `totalSec` and again by `count`, each row carrying `count`, `totalSec`, `medianSec`, `p95Sec`, `errRate`. `repeatsInSession`: identical `cmd` re-run inside one session, with `occurrences` and `wastedSec`. `flagFlailing`: same `bin` with four or more distinct normalised commands inside one session within 10 minutes, with `sessions`, `occurrences`, `totalSec`.
+`byTotalSec` and `byCount`: the same command-family rows ranked two ways, each carrying `family`, `bin`, `count`, `totalSec`, `medianSec`, `p95Sec`, `errRate`. The two rankings disagree, and the disagreement is the finding. `repeatsInSession`: identical `cmd` re-run inside one session, with `family`, `occurrences` (runs after the first), `sessions`, `wastedSec`. `flagFlailing`: same `bin` with four or more distinct families inside 10 minutes of one session, with `sessions`, `occurrences`, `totalSec`, `sampleCmds`.
 
 ### `errors`
 
-Clusters keyed by `sig`, each with `count`, `sessionCount`, `projects`, `sampleMsg`, `topTool`. Plus `missingBinaries` (command-not-found and ENOENT targets), `permissionDenied`, and `retryLoops` (same normalised command re-run within 5 minutes of an error, with `count` and `medianRetries`).
+`clusters`, keyed by `sig`, each with `count`, `sessionCount`, `projects`, `sampleMsg`, `topTool`. `missingBinaries` (`bin`, `count`, `sessions`, `sampleMsg`): command-not-found and ENOENT targets. `permissionDenied` (`target`, `count`, `sessions`, `sampleMsg`). `retryLoops` (`family`, `count`, `medianRetries`, `sessions`, `sampleCmd`): the same command re-run within 5 minutes of failing.
 
 ### `context`
 
-Sessions ranked by `maxCtx`. `bigOutputs`: tool calls ranked by `outChars`, each with its `arg`, plus the p95 `outChars` per tool. `reReads`: same `arg` Read more than once in a session, with `occurrences` and `wastedTokensEst`. `cacheWriteRatio` by `kind`.
+`topSessions`, ranked by `maxCtx`, with `sid`, `proj`, `kind`, `cacheReadTokens`, `cacheCreateTokens`, `estCostUsd`. `bigOutputs`: single tool results ranked by `outChars`, with `sid`, `proj`, `tool`, `arg`, `tokensEst`. `p95CharsByTool`: a record of tool to p95 `outChars`, so a big row can be read against its tool's norm. `reReads` (`arg`, `occurrences`, `sessions`, `wastedTokensEst`): the same file Read more than once in a session. `cacheWriteRatio`: a record keyed by `kind`.
 
 ### `web`
 
-`WebFetch` and `WebSearch` counts, seconds, and chars. `repeats`: the same url or query fetched more than once, with `count`, `chars`, and whether the repeat happened inside one run. Concentration by `run`.
+`byTool`: a record keyed `WebFetch` / `WebSearch`, each `{calls, sec, chars}`. `totalCalls`, `totalSec`, `totalChars`. `repeatRate`: share of calls that re-fetched a url or query already answered, 0..1. `repeats` (`tool`, `arg`, `count`, `chars`, `sessions`, `sameRun`). `byRun` (`run`, `calls`, `chars`, `agents`).
 
 ### `fanout`
 
-Workflow runs ranked by estimated cost, each with `agents`, `tokens`, `estCostUsd`, `medianFirstTurnCacheCreate`. `lowYield`: agents whose `outTokens` sit in the bottom decile relative to their `cacheReadTokens`.
+`runs`, ranked by estimated cost, each with `run`, `proj`, `agents`, `totals` (the four token fields), `estCostUsd`, `medianFirstTurnCacheCreate`. `lowYield` (`sid`, `run`, `proj`, `outTokens`, `cacheReadTokens`, `yield`, `estCostUsd`): agents whose `outTokens` sit in the bottom decile relative to their `cacheReadTokens`. Plus two scalars: `agentsWithFirstTurnCacheWrite` and `totalFirstTurnCacheCreate`.
 
 ### `human`
 
-`humanTurnCount`, `interrupts`, `corrections` (turns matching correction signals, bucketed and counted, with 2-3 verbatim samples per bucket), and `repeatedRequests` (near-duplicate human turns clustered across different sessions).
+`humanTurnCount`, `interrupts`, `corrections` (a ranking of `bucket`, `count`, `samples` — up to three verbatim turns), and `repeatedRequests` (`label`, `count`, `sessions`, `samples`), near-duplicate human turns clustered across different sessions.
 
 ### `projects`
 
-Per project: `sessions`, `tokens`, `bashSec`, `topCommands`, and what exists on disk at `cwd` — `CLAUDE.md`, `AGENTS.md`, `.claude/settings.json`, `package.json`. For `package.json` only the package manager and the script **names** are reported, never file contents.
+A ranking, per project: `proj`, `sessions`, `totals`, `estCostUsd`, `bashSec`, `topCommands` (the five costliest families), and `onDisk` — `cwd`, `claudeMd`, `agentsMd`, `settingsJson`, `packageJson`, `packageManager`, `scriptNames`. For `package.json` only the package manager and the script **names** are read, never file contents.
 
 ---
 
 # Privacy
 
-`user-msgs.jsonl` holds real prompts; `bash.jsonl` holds real commands and output. Secret redaction is on by default and covers API-key shapes (`sk-`, `ghp_`, `AKIA`, long base64 and hex runs), `Authorization:` headers, PEM private-key blocks, and `KEY=value` assignments whose key name contains token, secret, password, or key, replacing each with `[REDACTED]`. It is best-effort, not a guarantee. `--no-redact` writes everything verbatim. The tables stay on disk in the `--out` dir until the user deletes them.
+`user-msgs.jsonl` holds real prompts; `bash.jsonl` holds real commands and output. Secret redaction is on by default and covers provider key shapes (`sk-`, `gh[opusr]_`, `AKIA`, `xox`, JWTs and more), `Authorization:` headers, inline URL credentials, PEM private-key blocks, and `KEY=value` assignments whose key name contains token, secret, password, or key, replacing each with `[REDACTED]`. Only the value token is replaced, so `API_KEY=... bun run x` keeps the command. Long base64 and hex runs are redacted **only** next to a credential keyword and above an entropy threshold, so commit hashes, UUIDs, and file paths survive. It is best-effort, not a guarantee. `--no-redact` writes everything verbatim, and the script says so on stderr. The tables stay on disk in the `--out` dir until the user deletes them.
