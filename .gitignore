@@ -3,13 +3,17 @@ node_modules/
 *.log
 # user-provided files (screenshots, references) — never ship
 user-sent-files/
-# generated skill output artifacts (session-report / memory-view)
+# generated skill output artifacts (session-report / memory-view / harness-doctor)
 ccx-*.html
 mem-*.html
 mem-*.findings.json
+harness-audit/
 # test/coverage output
 coverage/
 *.tsbuildinfo
 # dev-only lockfile — bun-types is editor-only; scripts have no runtime deps
 bun.lock
 bun.lockb
+# python bytecode
+__pycache__/
+*.pyc

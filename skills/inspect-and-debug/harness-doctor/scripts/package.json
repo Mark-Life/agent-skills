@@ -1,0 +1,9 @@
+{
+  "name": "harness-doctor",
+  "private": true,
+  "type": "module",
+  "bin": { "harness-audit": "./audit.ts" },
+  "scripts": {
+    "audit": "bun run audit.ts"
+  }
+}
