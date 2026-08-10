@@ -112,6 +112,14 @@ bun test        # run unit + guard tests
   [`writing-great-skills`](https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-great-skills)
   skill.
 
+## Author
+
+Written by **[Andrey Markin](https://andrey-markin.com)** ([@Mark-Life](https://github.com/Mark-Life)).
+
 ## License
 
-MIT
+[MIT](LICENSE) © Mark-Life Ltd and Andrey Markin.
+
+The licence lives at the repo root and covers every skill here. `npx skills add`
+copies a skill folder into your project without it, so if you redistribute a
+skill, carry this notice with it.

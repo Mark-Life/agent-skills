@@ -8,6 +8,10 @@
  *
  * It inspects *tracked* files (what actually ships), so gitignored on-disk
  * cruft like a local node_modules/ or bun.lock does not trip it.
+ *
+ * The MIT licence is granted once, at the repo root, for the whole collection.
+ * Ten copies under skills/ would be ten things to keep in sync for a grant the
+ * root file already makes — so per-skill LICENSE files are a guard failure too.
  */
 import { test, expect, describe } from "bun:test";
 import { execFileSync } from "node:child_process";
@@ -37,6 +41,11 @@ describe("skills/ ships only runtime artifacts", () => {
   test("no dev-only directories committed under skills/", () => {
     const BAD = ["fixtures", "__tests__", "__mocks__", "node_modules", "dist", "build", "coverage"];
     const offenders = files.filter((f) => f.split("/").some((seg) => BAD.includes(seg)));
+    expect(offenders).toEqual([]);
+  });
+
+  test("no per-skill LICENSE copies — the licence lives at the repo root", () => {
+    const offenders = files.filter((f) => /(^|\/)(LICENSE|LICENCE|COPYING)(\.\w+)?$/i.test(f));
     expect(offenders).toEqual([]);
   });
 
