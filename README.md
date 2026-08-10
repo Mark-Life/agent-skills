@@ -52,6 +52,7 @@ Skills are grouped into catalog folders under `skills/<group>/`.
 | [`session-report`](skills/inspect-and-debug/session-report/SKILL.md) | `/session-report <id>` — generate a self-contained HTML report debugging a Claude Code (or Codex) session's context window: token budget, thinking cost, dumb-zone cutoff, full history. |
 | [`memory-view`](skills/inspect-and-debug/memory-view/SKILL.md) | `/memory-view [project]` — open a self-contained, secret-redacted HTML explorer of Claude Code's per-project auto-memory. View, search, and browse only — no edits, no curation. |
 | [`context-doctor`](skills/inspect-and-debug/context-doctor/SKILL.md) | `/context-doctor` — audit and shrink the fixed context loaded every session (tool/MCP definitions, plugins, skills, subagents, memory/rules) by pruning, gating, or routing what's loaded but unused. |
+| [`harness-doctor`](skills/inspect-and-debug/harness-doctor/SKILL.md) | `/harness-doctor [days]` — the fleet view across every project's transcripts, not just one session: a zero-dependency script mines the last N days into five fact tables (sessions, tools, bash, user messages, errors); the model digs into them and returns a ranked, copy-pasteable list of fixes for wasted wall-clock, tokens, and repeated corrections. |
 
 ## Repository layout
 

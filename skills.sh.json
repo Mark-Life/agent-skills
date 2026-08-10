@@ -2,8 +2,8 @@
   "groups": [
     {
       "title": "Inspect & Debug Agents",
-      "description": "See what Claude Code is doing: session context-window reports and memory.",
-      "skills": ["session-report", "memory-view", "context-doctor"]
+      "description": "See what Claude Code is doing: session context-window reports, memory, loaded context, and fleet-wide transcript audits.",
+      "skills": ["session-report", "memory-view", "context-doctor", "harness-doctor"]
     },
     {
       "title": "Coding Workflows",
