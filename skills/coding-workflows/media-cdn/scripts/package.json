@@ -1,0 +1,12 @@
+{
+  "name": "media-cdn",
+  "private": true,
+  "type": "module",
+  "bin": { "media-cdn": "./cdn.ts" },
+  "scripts": {
+    "cdn": "bun run cdn.ts"
+  },
+  "devDependencies": {
+    "bun-types": "^1.3.14"
+  }
+}
