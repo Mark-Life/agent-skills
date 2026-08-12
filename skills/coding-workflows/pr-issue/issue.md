@@ -29,6 +29,8 @@ symptom is what a user cannot do today; keep `Problem` and `Proposed solution`.
 
 <prose, with code excerpts>
 
+<image, when the defect is in rendered output>
+
 **Reproduction:**
 
 <prose lead-in>
@@ -72,7 +74,8 @@ them anyway.
 >
 > Line numbers are against `738628132`.
 
-When the defect is visual, paste a screenshot of it alongside the code excerpt.
+When the defect is in rendered output, a picture of it sits alongside the code
+excerpt.
 
 ## Reproduction
 

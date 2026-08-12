@@ -1,7 +1,7 @@
 ---
 name: pr-issue
 description: "Use when writing a pull request, issue, or ticket — title or body — or before running `gh pr create` or `gh issue create`."
-version: 2.2.0
+version: 2.3.0
 ---
 
 # PR & Issue
@@ -12,7 +12,8 @@ in template order.
 Three words carry this skill.
 **Symptom**: every body opens with the thing a human noticed.
 **Mechanism**: the next paragraph names the exact code that misbehaves.
-**Receipts**: any output shown was really produced, never output that would plausibly have been produced.
+**Receipts**: any output shown was really produced, never output that would
+plausibly have been produced — and a change to rendered output shows that output.
 
 A PR is read once, in a hurry, by someone deciding whether to approve. An issue
 is read once, weeks later, by someone deciding whether to work on it — and again
@@ -61,7 +62,7 @@ artifacts share.
    )"
    ```
 
-Done when all four hold, plus that artifact's own checks:
+Done when all five hold, plus that artifact's own checks:
 
 - The title is `area: summary`, lowercase after the colon, no period, under 72
   characters.
@@ -72,6 +73,8 @@ Done when all four hold, plus that artifact's own checks:
   Going over needs a reason the reader would agree with.
 - Every command shown was executed this session, and its pasted output was copied
   from a real result.
+- A change to rendered output is shown where the template puts it — or, where
+  nothing could be published, the body never mentions media.
 
 **Never claim evidence that does not exist.** This is the one hard guardrail in
 this skill: invented output is worse than no output, because the reader trusts
@@ -80,6 +83,17 @@ plain statement of that fact and of what was done instead.
 
 > Not tested — no local Stripe webhook fixture for this event type. Verified by
 > inspection against the `charge.refunded` payload in the Stripe docs.
+
+**A visual change carries a visual receipt.** Rendered output that changed — a
+component, a page, terminal output, a chart, a PDF — appears in the body; motion
+or a multi-step flow wants a GIF. A pixel-identical refactor changed nothing; a
+new feature has an after and no before. Publish it anywhere a reader loads
+without credentials: a file committed to a branch or a release asset renders
+inline from `raw.githubusercontent.com`, in a repo you own.
+
+Where nothing can be published, the media and every mention of it are absent — no
+placeholder, no broken link, no note. Unlike `Testing`, this gap goes unnamed: a
+stranger learns nothing from it.
 
 ## Title
 

@@ -18,9 +18,13 @@ the style rules. This file owns the rest of the body.
 
 <prose>
 
+<before image, when rendered output changed>
+
 **Solution:**
 
 <prose>
+
+<after image>
 
 ---
 
@@ -51,8 +55,8 @@ the section names the failure and cedes the lines to the reviewer.
 When a change fixes a main defect and two incidental ones, the main defect owns
 the first paragraph and the incidental ones share the second.
 
-When the change is visual, paste a screenshot of the UI as it looks before the
-fix — the "before" half of a before/after pair.
+When rendered output changed, the section ends with a picture of it before the
+fix. A new feature has no before, and invents none.
 
 ## Solution
 
@@ -79,8 +83,7 @@ almost always such an argument.
 > Good: On read the model wins over the persisted value, so rows written by an
 > older deploy still name the right party.
 
-When the change is visual, paste a screenshot of the UI after the fix — the
-"after" that pairs with the `Problem` screenshot.
+The after closes this section, pairing with the before in `Problem`.
 
 ## Security Impact
 
