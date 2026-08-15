@@ -1,7 +1,7 @@
 ---
 name: writing-for-readers
 description: "Writing prose a reader chose to read. Use when drafting or editing a blog post, article, docs page, landing page or newsletter, or when a draft reads like AI. For output handed back to the user, use agent-to-human."
-version: 1.1.0
+version: 1.1.1
 ---
 
 # Writing for Readers
@@ -46,6 +46,11 @@ Print the sentences-per-paragraph sequence before publishing, then check:
    30, never by padding.
 4. **One sentence under 5 words and one over 35 per 1000 words**, the extremes on
    top of item 3's mix. A one-word paragraph answering its own heading counts.
+5. **Opening sentences vary in length like every other sentence.** In any four
+   consecutive paragraphs, at most one opens on a sentence under 10 words. Short
+   opener then explanation is a mould, and four of them in a row reads as one
+   even when every word differs. Merge the extra short openers into the sentence
+   that follows.
 
 Contractions: at least one per 90 words, and zero contractions in first-person
 prose fails on its own. Sentence openers: if one word starts more than 15% of
@@ -248,8 +253,8 @@ imperative verb is a speech close; collapse them into one sentence.
 Run this before you call a draft done. It is mechanical; do it literally.
 
 1. Read the **first sentence of every paragraph** on its own. Delete it, reread
-   the paragraph, and if no fact is missing, leave it deleted. Catches tells 1, 3
-   and 5.
+   the paragraph, and if no fact is missing, leave it deleted. Then count the
+   openers under 10 words, against item 5. Catches tells 1, 3 and 5.
 2. Read the **last sentence of every paragraph** in one column. Cut every
    fragment, and every sentence that only recombines words already in its
    paragraph. Keep at most one pull-quote. Catches tells 2 and 6.
