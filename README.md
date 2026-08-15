@@ -44,7 +44,7 @@ Skills are grouped into catalog folders under `skills/<group>/`.
 | --- | --- |
 | [`agent-to-human`](skills/communication/agent-to-human/SKILL.md) | Write the final human-facing output — chat reply, summary, status update, PR/issue/commit message — to respect the reader's attention: answer first, cut to the decision, receipts only, plain words. Source of truth for output style. |
 | [`human-to-agent`](skills/communication/human-to-agent/SKILL.md) | Write instructions an agent will execute — prompts, skills, `CLAUDE.md`/`AGENTS.md` rules, tickets — for predictable behaviour: prompt the positive, leading words, cut no-ops, checkable completion criteria. |
-| [`writing-for-readers`](skills/communication/writing-for-readers/SKILL.md) | Write published prose — articles, blog posts, course lessons, landing page copy — in a voice that reads as a person explaining something out loud: nine named tells to cut (aphorism pair, thesis opener, speech close, em dashes…), half the length, and a mechanical pass over the finished draft. |
+| [`writing-for-readers`](skills/communication/writing-for-readers/SKILL.md) | Write published prose — articles, blog posts, course lessons, landing page copy — in a voice that reads as a person explaining something out loud: what human prose does (first person, admitted limits, named specifics), measured paragraph- and sentence-length variance, twelve named tells to cut (aphorism pair, negate-then-correct, sincerity words, rule of three, em dashes…), and a mechanical pass over the finished draft. |
 
 ### Inspect & Debug
 
