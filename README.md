@@ -55,6 +55,12 @@ Skills are grouped into catalog folders under `skills/<group>/`.
 | [`context-doctor`](skills/inspect-and-debug/context-doctor/SKILL.md) | `/context-doctor` — audit and shrink the fixed context loaded every session (tool/MCP definitions, plugins, skills, subagents, memory/rules) by pruning, gating, or routing what's loaded but unused. |
 | [`harness-doctor`](skills/inspect-and-debug/harness-doctor/SKILL.md) | `/harness-doctor [days]` — the fleet view across every project's transcripts, not just one session: a zero-dependency script mines the last N days into five fact tables (sessions, tools, bash, user messages, errors); the model digs into them and returns a ranked, copy-pasteable list of fixes for wasted wall-clock, tokens, and repeated corrections. |
 
+### Video
+
+| Skill | Description |
+| --- | --- |
+| [`clean-cut`](skills/video/clean-cut/SKILL.md) | Tighten a talking or screen-recorded video without changing what is said, in any language: cut filler sounds (um, uh, э-э-э), throat clears and dead air, keep a longer pause where the screen changes, speed up 1.1x, and render a 1080p preview before the 4K final. Builds on [`video-use`](https://github.com/browser-use/video-use). |
+
 ## Repository layout
 
 ```
@@ -113,6 +119,11 @@ bun test        # run unit + guard tests
   sediment, sprawl) draw from **[Matt Pocock](https://github.com/mattpocock)**'s
   [`writing-great-skills`](https://github.com/mattpocock/skills/tree/main/skills/productivity/writing-great-skills)
   skill.
+
+- [`clean-cut`](skills/video/clean-cut/SKILL.md) — a style layer on
+  **[browser-use](https://github.com/browser-use)**'s
+  [`video-use`](https://github.com/browser-use/video-use) skill, which provides
+  transcription and the editing hard rules.
 
 ## Author
 
