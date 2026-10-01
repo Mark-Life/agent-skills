@@ -1,7 +1,7 @@
 ---
 name: observability
 description: "Observability for TypeScript services: one wide event per request or job, high-cardinality fields, span and metric design, OTel export, tail sampling. Use when adding or reviewing logging, tracing, telemetry, metrics or OTel wiring, deciding what a request or job should record, or debugging production from what a service already emits. Owns instrumentation decisions — prefer over general TypeScript-quality guidance. Triggers on 'add logging', 'instrument this', 'add tracing', 'wire up OTel', 'I can't tell what happened in prod'."
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Observability
@@ -374,7 +374,7 @@ return Option.match(endpoint, {
 });
 ```
 
-`Otlp.layerJson` from `effect/unstable/observability/Otlp` ships logs, metrics
+`Otlp.layerJson` from `effect/observability/Otlp` ships logs, metrics
 and traces with no `@opentelemetry/*` dependency on Effect v4. Credentials ride
 `OTEL_EXPORTER_OTLP_HEADERS`, parsed splitting on the **first** `=` so a `Bearer`
 or base64 value survives, and `OtlpLogger` merges with the loggers present in its
