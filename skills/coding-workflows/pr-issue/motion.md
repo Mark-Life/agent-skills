@@ -23,7 +23,13 @@ rename, or a change a screenshot already shows gets no schematic.
   part when it does work: red in before, green in after. Idle parts stay grey.
 - **Pure black, neutral greys, red and green only.** No tints, gradients, grids,
   or logos.
-- **Column headers are the only text.** The body explains; the GIF shows.
+- **Headers and part labels are the only text.** Name a part in 1–3 words
+  ("main thread", "worker", "client", "database") when its shape alone does not
+  say what it is — at most about four a column. Sentences and captions belong in
+  the body; the GIF shows.
+- **Labels stay quiet.** Muted grey, smaller than the column headers, beside the
+  part or at the start of its lane. A one-line legend is fine when colour alone
+  carries a meaning.
 - **Faithful direction, schematic shapes.** The ratio between the columns
   follows the PR's real numbers; the exact figures stay in the body.
 - **About 6 seconds**, one pass with a short fade, 1080 CSS px square rendered at
