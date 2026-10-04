@@ -75,7 +75,8 @@ them anyway.
 > Line numbers are against `738628132`.
 
 When the defect is in rendered output, a picture of it sits alongside the code
-excerpt.
+excerpt. When it is in a mechanism — wasted renders, a bad data flow — the before
+column of a motion schematic ([`motion.md`](motion.md)) sits there instead.
 
 ## Reproduction
 

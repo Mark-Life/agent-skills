@@ -36,7 +36,7 @@ Skills are grouped into catalog folders under `skills/<group>/`.
 | [`new-project`](skills/coding-workflows/new-project/SKILL.md) | Scaffold a brand-new project from the personal Next.js monorepo template (`Mark-Life/netxjs-monorepo`) and run the standard bootstrap. |
 | [`observability`](skills/coding-workflows/observability/SKILL.md) | Instrument a TypeScript service so production is answerable: one wide event per request, job or run, high-cardinality fields, closed outcome unions, two-tier span names, bounded metric tags, config-gated OTel export, and tail sampling. Owns logging, tracing and metrics decisions. |
 | [`media-cdn`](skills/coding-workflows/media-cdn/SKILL.md) | Put a local file on a `media-cdn-service` deployment and hand back a public URL — one zero-dependency CLI for upload, list, publish/unpublish, download, and whoami, credentials from `~/.agents/.env.local` or `--env <path>`. |
-| [`pr-issue`](skills/coding-workflows/pr-issue/SKILL.md) | Write PR, issue, and ticket titles and bodies in Vim's `area: summary` style — `Problem:`/`Solution:`/`Security Impact:`/`Testing:` for PRs, `Problem:`/`Reproduction:`/`Expected vs actual:`/`Proposed solution:` for issues. |
+| [`pr-issue`](skills/coding-workflows/pr-issue/SKILL.md) | Write PR, issue, and ticket titles and bodies in Vim's `area: summary` style — `Problem:`/`Solution:`/`Security Impact:`/`Testing:` for PRs, `Problem:`/`Reproduction:`/`Expected vs actual:`/`Proposed solution:` for issues. A change to a mechanism with no pixels to show — re-renders, data flow, a schema — gets a short before/after motion-schematic GIF. |
 
 ### Communication
 
