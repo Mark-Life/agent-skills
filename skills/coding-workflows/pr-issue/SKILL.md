@@ -1,7 +1,7 @@
 ---
 name: pr-issue
 description: "Use when writing a pull request, issue, or ticket — title or body — or before running `gh pr create` or `gh issue create`."
-version: 2.3.0
+version: 2.4.0
 ---
 
 # PR & Issue
@@ -86,10 +86,12 @@ plain statement of that fact and of what was done instead.
 
 **A visual change carries a visual receipt.** Rendered output that changed — a
 component, a page, terminal output, a chart, a PDF — appears in the body; motion
-or a multi-step flow wants a GIF. A pixel-identical refactor changed nothing; a
-new feature has an after and no before. Publish it anywhere a reader loads
-without credentials: a file committed to a branch or a release asset renders
-inline from `raw.githubusercontent.com`, in a repo you own.
+or a multi-step flow wants a GIF. A new feature has an after and no before. A
+change to a mechanism with no pixels to show — what re-renders, how data flows,
+a schema — carries a motion schematic instead: read [`motion.md`](motion.md).
+Publish it anywhere a reader loads without credentials: `gh --attach` uploads to
+GitHub, and a file committed to a branch or a release asset renders inline from
+`raw.githubusercontent.com`, in a repo you own.
 
 Where nothing can be published, the media and every mention of it are absent — no
 placeholder, no broken link, no note. Unlike `Testing`, this gap goes unnamed: a

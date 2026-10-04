@@ -83,7 +83,9 @@ almost always such an argument.
 > Good: On read the model wins over the persisted value, so rows written by an
 > older deploy still name the right party.
 
-The after closes this section, pairing with the before in `Problem`.
+The after closes this section, pairing with the before in `Problem`. A motion
+schematic ([`motion.md`](motion.md)) closes it when the change has no pixels to
+show.
 
 ## Security Impact
 
