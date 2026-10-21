@@ -86,6 +86,9 @@ A review is a loop, not an agent.
   - **"can it be better, more performant, simpler?"**: subtract layers, state
     and dependencies that earn nothing;
   - repo hygiene and upstream readiness.
+
+  Each reviewer starts from `git diff --stat <base>...HEAD` and reads diffs one
+  file at a time.
 - **Sweep.** Mechanical unused-code check on everything the change adds:
   `knip`, `tsc --noUnusedLocals --noUnusedParameters`, and a grep proving every
   new export and returned field has a reader. Reviewers miss what tools see.

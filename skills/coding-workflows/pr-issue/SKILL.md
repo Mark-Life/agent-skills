@@ -43,7 +43,8 @@ artifacts share.
 ## Shared steps
 
 1. Gather the ground truth in full. For a PR that is the diff
-   (`git diff <base>...HEAD`), read until every changed file is accounted for,
+   (`git diff --stat <base>...HEAD`, then `git diff <base>...HEAD -- <file>`
+   per file), read until every changed file is accounted for,
    not until the shape is clear. For an issue it is the code path that fails,
    read until you can name the line that decides the wrong outcome.
 2. One artifact, one problem. A diff spanning unrelated areas splits into two
