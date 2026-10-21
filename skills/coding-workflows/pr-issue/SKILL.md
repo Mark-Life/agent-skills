@@ -1,7 +1,7 @@
 ---
 name: pr-issue
 description: "Use when writing a pull request, issue, or ticket — title or body — or before running `gh pr create` or `gh issue create`."
-version: 2.4.1
+version: 2.5.0
 ---
 
 # PR & Issue
@@ -88,8 +88,10 @@ plain statement of that fact and of what was done instead.
 **A visual change carries a visual receipt.** Rendered output that changed — a
 component, a page, terminal output, a chart, a PDF — appears in the body; motion
 or a multi-step flow wants a GIF. A new feature has an after and no before. A
-change to a mechanism with no pixels to show — what re-renders, how data flows,
-a schema — carries a motion schematic instead: read [`motion.md`](motion.md).
+change to a mechanism — what re-renders, how data flows — shows a real capture
+where one exists (react-scan outlines, a profiler trace, a table of numbers).
+Only when none shows it does a motion schematic take its place: read
+[`motion.md`](motion.md).
 Publish it anywhere a reader loads without credentials: `gh --attach` uploads to
 GitHub, and a file committed to a branch or a release asset renders inline from
 `raw.githubusercontent.com`, in a repo you own.
