@@ -8,18 +8,31 @@ It is an illustration, never a promo: a diagram that moves.
 
 ## When
 
-Draw one when the change is a mechanism the reader would otherwise rebuild from
-prose: what re-renders, what re-parses or refetches, how data or control flows,
-how a schema or state shape changes, what runs in what order. A localized fix, a
-rename, or a change a screenshot already shows gets no schematic.
+Draw one only when the motion itself carries information: the reader must see
+something happen over time — what re-renders, what re-parses or refetches, how
+data or control flows, what runs in what order — and no real capture shows it.
+A real capture wins over a schematic: react-scan outlines, a profiler flame
+chart, terminal output, or a before/after table of numbers. A localized fix, a
+rename, a static shape change, or a change a screenshot or table already shows
+gets no schematic.
+
+A request to "add motion" is a request to show the mechanism, not to draw this
+file's default layout. If the honest picture is one diagram, one column, or no
+GIF, make that.
 
 ## Shape
 
+These are defaults, not a template. Every element earns its place by showing
+something the others do not; drop the ones that do not.
+
 - **Two columns, one clock.** Before on the left, after on the right, the same
   input playing through both at once. A feature with no before is one column.
-- **Metric strip on top of each column**, both on the same scale: the cost per
-  step, or a running count. A ramp against a flat line is the whole message.
-- **Wireframe below.** Grey bars for text, plain boxes for components. Flash a
+- **A metric strip only when the number moves with the input.** A cost that
+  grows per step against one that stays flat earns a strip on top of each
+  column, both on the same scale. A fixed ratio, a count that never changes, or
+  a number already in the body's table gets no strip: the flashing parts carry
+  the message.
+- **Wireframe.** Grey bars for text, plain boxes for components. Flash a
   part when it does work: red in before, green in after. Idle parts stay grey.
 - **Pure black, neutral greys, red and green only.** No tints, gradients, grids,
   or logos.
