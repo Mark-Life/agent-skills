@@ -1,7 +1,7 @@
 ---
 name: full-cycle
-description: "Use when the user brings an idea, a goal, or a discussion and wants it carried all the way to a reviewed, ready PR — e.g. 'optimize this app', 'make X faster', 'take this from idea to PR', 'full cycle'. Survey, decide with the human, implement, review until dry, ship with visuals."
-version: 1.0.0
+description: "Use when the user brings an idea, a goal, or a discussion and wants it carried all the way to a reviewed, ready PR — e.g.'implement this idea full cycle'. Also runs solo, with no asks, when the human says so."
+version: 1.1.0
 ---
 
 # Full cycle
@@ -31,6 +31,21 @@ than a paragraph. A Mermaid map for structure and flow, a motion schematic for
 what changes over time (`pr-issue` skill, `motion.md`), a screenshot or slowed
 real recording for what a user sees. Style is owned by the `agent-to-human`
 skill.
+
+## Solo mode
+
+Solo is on when the human says so: `solo`, "don't ask me", "no questions", or
+similar.
+
+In solo mode every **ask** is answered by your own `(recommended)` pick. Do not
+wait. Record each pick and its reason in a decision log, and put the log in the PR
+body, so the human can audit every choice in one read.
+
+Still ask, even in solo:
+- opening a PR on a repo the human does not own;
+- any irreversible or outward-facing action the human did not authorize.
+
+Stop and ask when no option is clearly better than the others.
 
 ## Peers
 
@@ -71,8 +86,8 @@ Gates marked **ask** wait for the human. Everything else runs unattended.
 8. **PR.** Write it with the `pr-issue` skill: before/after table, the options
    rejected and why, future work, visuals. Slice into one-problem PRs, stacked
    when they build on each other. Show the human the local media paths before
-   any PR body changes. **Ask** before opening anything on a repo the human does
-   not own.
+   any PR body changes (skipped in solo mode). **Ask** before opening anything on
+   a repo the human does not own, even in solo mode.
 
 ## Review until dry
 
@@ -101,9 +116,13 @@ A review is a loop, not an agent.
   videos agreed at the options stage. Behaviour drifted from the picture means
   fix the code or redraw the picture, and tell the human which.
 
+Do maximum 4 cycles of review, unless told otherwise.
+Ship PR after 4 cyclces even if not fully dry.
+
 ## Done when
 
-- Every ask carried a `(recommended)` pick and the human's answer is recorded.
+- Every ask carried a `(recommended)` pick and the human's answer, or the solo
+  pick, is recorded.
 - The PR shows measured before/after numbers with spread, and names what was not
   run.
 - Two review rounds in a row came back dry, and the picture check passed.
