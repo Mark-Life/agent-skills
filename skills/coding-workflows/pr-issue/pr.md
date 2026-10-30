@@ -1,15 +1,15 @@
 # Pull request
 
-Read [`SKILL.md`](SKILL.md) first — it owns the title, the `Problem` section, and
-the style rules. This file owns the rest of the body.
+Read [`SKILL.md`](SKILL.md) first — it owns the title, the `Problem` section, the
+visual receipts, and the style rules. This file owns the rest of the body.
 
 ## Steps
 
 1. Write `Problem` from the failure, `Solution` from the idea.
-2. Run every command you are about to cite in `Testing`. Copy its real output.
-   Done when no fenced line in `Testing` is unsourced.
-3. Assess `Security Impact` against auth, input parsing, secrets, permissions,
-   SQL, shell execution, and deserialization. Only then may it say `None`.
+2. Gather `Evidence`. Measure every number on `main` and on the branch with the
+   same command, and run every test you cite. Done when each number and each
+   result traces to a command run this session.
+3. Walk every item of the `Risks` list below. Only then may it say `None`.
 
 ## Template
 
@@ -18,31 +18,27 @@ the style rules. This file owns the rest of the body.
 
 <prose>
 
-<before image, when rendered output changed>
-
 **Solution:**
 
 <prose>
 
-<after image>
+<illustration, when the shape of the code changed>
 
 ---
 
-*Security Impact:*
+*Evidence:*
 
-<prose or `None`>
+<table: metric | main | branch | Δ>
+
+<before | after images, when rendered output changed>
+
+<tests run, with totals>
 
 ---
 
-*Testing:*
+*Risks:*
 
-<prose>
-
-```
-<real output>
-```
-
-<before/after sentence>
+<one bullet per risk, or `None`>
 ````
 
 The template is exhaustive: four sections, that emphasis.
@@ -52,17 +48,19 @@ The template is exhaustive: four sections, that emphasis.
 The shape is in `SKILL.md`. A PR keeps it short — the diff is one click away, so
 the section names the failure and cedes the lines to the reviewer.
 
+The mechanism paragraph is the before: how the code works today, in plain words
+— which part does what, in what order — so a cold reader follows it without
+knowing this corner of the codebase.
+
 When a change fixes a main defect and two incidental ones, the main defect owns
 the first paragraph and the incidental ones share the second.
 
-When rendered output changed, the section ends with a picture of it before the
-fix. A new feature has no before, and invents none.
-
 ## Solution
 
-The idea, at the level of the idea. The diff shows the lines; this section shows
-the shape. Cover the fallbacks, the edge cases, and what happens when the new
-path fails.
+The idea, at the level of the idea, and the after: how the code works once the
+change lands, in the same plain words as the before. The diff shows the lines;
+this section shows the shape. Cover the fallbacks, the edge cases, and what
+happens when the new path fails.
 
 > Capture the branch name, and when it is empty fall back to the short commit SHA
 > from `git rev-parse --short HEAD`. If that also fails (a repo with no commits),
@@ -83,32 +81,66 @@ almost always such an argument.
 > Good: On read the model wins over the persisted value, so rows written by an
 > older deploy still name the right party.
 
-The after closes this section, pairing with the before in `Problem`. A motion
-schematic ([`motion.md`](motion.md)) closes it when the change has no pixels to
-show.
+An illustration closes this section when the shape of the code changed: a new
+call order, a moved responsibility, a new path for data. `SKILL.md` picks the
+form. Illustrations explain; receipts prove, and live in `Evidence`.
 
-## Security Impact
+## Evidence
 
-A real assessment, not a ritual. When the change crosses a trust boundary, state
-the exposure and why the change is safe. Otherwise a bare `None` on its own line
-is correct, and is the right answer for most PRs.
+Receipts that the change does what `Solution` claims, and at what cost. Lead with
+the strongest one.
 
-## Testing
+**Numbers.** When the change moves anything measurable — latency, bundle size,
+memory, query count, build or test time — show `main` against the branch, with
+one line under the table naming the command:
 
-Receipts. The output block comes first, after at most a one-line lead-in naming
-what was run — it is the section's evidence, and a reviewer scanning for green
-should not have to read past a paragraph to find it. Then what the new tests
-cover, then one closing sentence contrasting before with after and confirming the
-unaffected path is unchanged. Suite totals suffice; never paste a full test log.
-
-> Ran the script against a throwaway repo in detached HEAD (`git checkout HEAD~1`):
+> | Metric | main | branch | Δ |
+> | --- | --- | --- | --- |
+> | p95 `/search` latency | 840 ms | 210 ms | −75% |
+> | client bundle (gzip) | 182 kB | 186 kB | +4 kB |
 >
-> ```
-> old logic (--show-current || echo detached): []
-> new logic (fallback to short SHA):           [fd4b022]
-> ```
->
-> Before, the branch segment was blank; after, it shows the short SHA. On a normal
-> branch the output is unchanged.
+> `k6 run search.js` and `next build`, same machine, 3 runs each, median shown.
+
+A row that got worse stays in the table; `Risks` names the trade-off.
+
+**Behaviour.** A bug fix shows the failing case and one unaffected case, before
+and after:
+
+> | HEAD state | before | after |
+> | --- | --- | --- |
+> | detached (`git checkout HEAD~1`) | blank | `fd4b022` |
+> | on `main` | `main` | `main` |
+
+**Pictures.** Rendered output that changed shows here, before and after side by
+side in a two-column table. A multi-step flow shows as a video or GIF walkthrough.
+A new feature shows its after only.
+
+**Tests.** One line per suite: what ran, the totals, what the new tests cover.
+
+> `bun test`: 214 passed, 0 failed. 3 new tests cover the detached-HEAD fallback.
 
 Never claim testing that did not happen — see the guardrail in `SKILL.md`.
+
+## Risks
+
+What a reviewer accepts by merging. Find the blast radius: walk every item, and
+write one bullet for each that applies — the risk, then what bounds it.
+
+- **Security**: crosses a trust boundary — auth, input parsing, secrets,
+  permissions, SQL, shell execution, deserialization.
+- **Regression**: changes behaviour that callers or users rely on, or makes a
+  number worse (a row that got worse in `Evidence`).
+- **Merge**: forces other open branches to rebase or rework — a wide rename,
+  moved files, a changed shared type, a schema migration, lockfile churn.
+- **Product**: decides something the product owner would want to weigh — a
+  default, what users see, what they can no longer do.
+- **Rollout**: needs a step or an order at deploy — migration first, a new env
+  var, a feature flag, a data change that cannot be undone.
+
+> - **Regression**: client bundle +4 kB gzip for the sanitizer, in exchange for
+>   closing the XSS path in comments.
+> - **Merge**: renames `useCart` to `useBasket` across 31 files; open branches
+>   that touch the cart need a rebase.
+
+When no item applies, a bare `None` on its own line is correct, and is the right
+answer for most PRs.
