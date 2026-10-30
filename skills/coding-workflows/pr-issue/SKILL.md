@@ -1,7 +1,7 @@
 ---
 name: pr-issue
 description: "Use when writing a pull request, issue, or ticket — title or body — or before running `gh pr create` or `gh issue create`."
-version: 2.5.0
+version: 3.0.0
 ---
 
 # PR & Issue
@@ -17,8 +17,9 @@ plausibly have been produced — and a change to rendered output shows that outp
 
 A PR is read once, in a hurry, by someone deciding whether to approve. An issue
 is read once, weeks later, by someone deciding whether to work on it — and again
-by whoever picks it up. Every sentence earns its place by moving that decision
-along.
+by whoever picks it up. Both readers are **cold**: switching in from other work,
+often not the author, often new to this corner of the codebase. Every sentence
+earns its place by moving that decision along.
 
 ## Which artifact
 
@@ -30,8 +31,8 @@ after them diverges.
 | --- | --- | --- |
 | Title mood | imperative — the change | indicative — the defect or the gap |
 | Header block | none | `Labels:` / `Relates to:` |
-| Body | Problem, Solution, Security Impact, Testing | Problem, Reproduction, Expected vs actual, Proposed solution |
-| Evidence | commands you ran, output you copied | steps that reproduce, revision the line numbers pin to |
+| Body | Problem, Solution, Evidence, Risks | Problem, Reproduction, Expected vs actual, Proposed solution |
+| Receipts | numbers measured on `main` and branch, tests you ran | steps that reproduce, revision the line numbers pin to |
 | Tone of the fix | decided | proposed, with the open questions named |
 
 **Read one reference, now, before drafting.** This file carries only what both
@@ -40,20 +41,48 @@ artifacts share.
 - Writing a pull request → [`pr.md`](pr.md)
 - Writing an issue, ticket, or bug report → [`issue.md`](issue.md)
 
+## The repo's own template
+
+A repo's own template outranks this skill. This skill's templates are the default
+for repos with none.
+
+Find it before drafting:
+
+```bash
+find . -maxdepth 3 -path ./node_modules -prune -o \( -iname '*pull_request_template*' -o -iname '*issue_template*' -o -iname 'contributing.md' \) -print
+```
+
+When that finds nothing, GitHub falls back to the owner's public `.github` repo:
+look in its root, `.github/`, and `docs/` with `gh api repos/<owner>/.github/contents/<dir>`.
+
+When a template exists, keep its headings, order, checkboxes, and title
+convention. Each rule it or `CONTRIBUTING.md` sets replaces the matching rule in
+this skill, including the checks under Shared steps. The style rules and the
+guardrail still apply inside its sections, and a checkbox is ticked only for
+work done. Then place this skill's content:
+
+- A matching section takes it: `Problem` under their "Motivation", `Evidence`
+  under their "How was this tested?".
+- A near home absorbs it with no new heading: in a Problem / Solution template,
+  the evidence closes their Solution.
+- Content with no home gets this skill's section, after all of theirs: a
+  template with no place for risks ends with `*Risks:*`.
+
 ## Shared steps
 
-1. Gather the ground truth in full. For a PR that is the diff
+1. Find the repo's own template, above.
+2. Gather the ground truth in full. For a PR that is the diff
    (`git diff --stat <base>...HEAD`, then `git diff <base>...HEAD -- <file>`
    per file), read until every changed file is accounted for,
    not until the shape is clear. For an issue it is the code path that fails,
    read until you can name the line that decides the wrong outcome.
-2. One artifact, one problem. A diff spanning unrelated areas splits into two
+3. One artifact, one problem. A diff spanning unrelated areas splits into two
    PRs; a report bundling two defects splits into two issues.
-3. Draft the title from the area of the largest coherent change.
-4. Follow the reference for the artifact — it owns the middle of the body.
-5. Cut every clause that would not change what the reader does. Done when the
-   body is under 400 words.
-6. Open it with a heredoc, so the markdown survives the shell:
+4. Draft the title from the area of the largest coherent change.
+5. Follow the reference for the artifact — it owns the middle of the body.
+6. Cut every clause that would not change what the reader does. Done when the
+   body has under 400 words of prose.
+7. Open it with a heredoc, so the markdown survives the shell:
 
    ```bash
    gh pr create --title "statusline: show commit SHA on detached HEAD" --body "$(cat <<'EOF'
@@ -70,10 +99,10 @@ Done when all five hold, plus that artifact's own checks:
 - The body has that artifact's sections, in template order, and nothing else. No
   `Changes`, no `Checklist`, no `Related issues` prose, no emoji, and no
   `Generated with` footer beyond what the harness requires.
-- The body is under 400 words, and no section runs past two paragraphs of prose.
-  Going over needs a reason the reader would agree with.
-- Every command shown was executed this session, and its pasted output was copied
-  from a real result.
+- The body has under 400 words of prose, and no section runs past two
+  paragraphs. Tables, images, diagrams, and code blocks do not count. Going over
+  needs a reason the reader would agree with.
+- Every command, number, and result shown came from a run this session.
 - A change to rendered output is shown where the template puts it — or, where
   nothing could be published, the body never mentions media.
 
@@ -87,17 +116,22 @@ plain statement of that fact and of what was done instead.
 
 **A visual change carries a visual receipt.** Rendered output that changed — a
 component, a page, terminal output, a chart, a PDF — appears in the body; motion
-or a multi-step flow wants a GIF. A new feature has an after and no before. A
-change to a mechanism — what re-renders, how data flows — shows a real capture
-where one exists (react-scan outlines, a profiler trace, a table of numbers).
-Only when none shows it does a motion schematic take its place: read
-[`motion.md`](motion.md).
+or a multi-step flow wants a video or GIF walkthrough. A new feature has an after
+and no before. A change to a mechanism — what re-renders, how data flows — shows a
+real capture where one exists (react-scan outlines, a profiler trace, a table of
+numbers).
+
+**A change in shape carries an illustration**, so a cold reader sees the
+structure before reading about it. A static shape — components, call order, who
+owns what — is a `mermaid` diagram, before and after side by side. Motion that no
+real capture shows — what re-runs, what flows where over time — is a motion
+schematic: read [`motion.md`](motion.md).
 Publish it anywhere a reader loads without credentials: `gh --attach` uploads to
 GitHub, and a file committed to a branch or a release asset renders inline from
 `raw.githubusercontent.com`, in a repo you own.
 
 Where nothing can be published, the media and every mention of it are absent — no
-placeholder, no broken link, no note. Unlike `Testing`, this gap goes unnamed: a
+placeholder, no broken link, no note. Unlike a test not run, this gap goes unnamed: a
 stranger learns nothing from it.
 
 ## Title
@@ -173,6 +207,12 @@ a list of removed call sites, say. The numbered steps in an issue's
 `Reproduction` are the one list a template asks for. A bulleted list that is
 really a changelog of the diff is a PR that wants splitting; a bulleted list that
 is really a paragraph with dashes in front of it is a paragraph.
+
+**Tables for comparisons.** Results that compare — `main` against branch, before
+against after, option against option — go in a table, with a `Δ` column for
+numbers. A list of results goes in bullets. A code block holds only text whose
+exact characters are the point: a changed CLI output, an error message, a command
+to copy.
 
 **Present tense, about the change.** The sentences describe behaviour, not
 authorship.
