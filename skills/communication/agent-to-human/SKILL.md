@@ -1,7 +1,7 @@
 ---
 name: agent-to-human
 description: "Use when producing the final output a person will read — a chat reply, summary, status update, handoff, or a PR, issue, or commit message — not your private reasoning. Triggers on wrapping up a task or reporting back to the user."
-version: 1.1.0
+version: 1.2.0
 ---
 
 # Agent → Human
@@ -88,8 +88,6 @@ Status updates stay short.
    say what it is on first use.
 5. Show measured numbers in a table.
 6. Compare options by what gets fixed and what it costs, and mark your pick.
-7. Put anything longer than one screen, and every draft for review, in a
-   markdown file, and give its path.
 
 Done when a reader who has never opened this code can say what breaks, why,
 and what each option costs.
