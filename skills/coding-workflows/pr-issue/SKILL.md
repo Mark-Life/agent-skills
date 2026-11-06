@@ -1,7 +1,7 @@
 ---
 name: pr-issue
 description: "Use when writing a pull request, issue, or ticket — title or body — or before running `gh pr create` or `gh issue create`."
-version: 3.0.0
+version: 3.1.0
 ---
 
 # PR & Issue
@@ -40,6 +40,7 @@ artifacts share.
 
 - Writing a pull request → [`pr.md`](pr.md)
 - Writing an issue, ticket, or bug report → [`issue.md`](issue.md)
+- Writing a stack of pull requests → [`pr.md`](pr.md), then [`stack.md`](stack.md)
 
 ## The repo's own template
 
