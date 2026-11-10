@@ -124,8 +124,9 @@ numbers).
 
 **A change in shape carries an illustration**, so a cold reader sees the
 structure before reading about it. A static shape — components, call order, who
-owns what — is a `mermaid` diagram, before and after side by side. Motion that no
-real capture shows — what re-runs, what flows where over time — is a motion
+owns what — is a `mermaid` diagram, one block for the before and then one for
+the after, never two subgraphs in one block, which GitHub renders with the after
+on top. Motion that no real capture shows — what re-runs, what flows where over time — is a motion
 schematic: read [`motion.md`](motion.md).
 Publish it anywhere a reader loads without credentials: `gh --attach` uploads to
 GitHub, and a file committed to a branch or a release asset renders inline from
