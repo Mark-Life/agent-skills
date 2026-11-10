@@ -1,7 +1,7 @@
 ---
 name: pr-issue
 description: "Use when writing a pull request, issue, or ticket — title or body — or before running `gh pr create` or `gh issue create`."
-version: 3.1.0
+version: 3.1.1
 ---
 
 # PR & Issue
